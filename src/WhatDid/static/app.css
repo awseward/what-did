@@ -52,11 +52,11 @@ a:hover {
   display: inline-block;
 } */
 
-span.static {
+span.secondary {
   color: #3F51B577;
   display: inline-block;
 }
 
-span.dynamic {
+span.primary {
   display: inline-block;
 }

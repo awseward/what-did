@@ -13,19 +13,27 @@ refactor: Rewrite in $LATEST_THING  https://github.com/owner/repository/pull/8
 style:    Make it look alright      https://github.com/owner/repository/pull/20"
     .Trim()
 
+let private _fancyCompareUrl owner repository baseRev headRevOpt =
+  let headRev = headRevOpt |> Option.defaultValue "master"
+
+  [
+    span [_class "secondary"] [ rawText "https://github.com/compare/"]
+    span [_class "primary"] [rawText owner]
+    span [_class "secondary"] [rawText "/"]
+    span [_class "primary"] [rawText repository]
+    span [_class "secondary"] [rawText "/compare/"]
+    span [_class "primary"] [rawText baseRev]
+    span [_class "secondary"] [rawText "..."]
+    span [_class "primary"] [rawText headRev]
+  ]
+
+
 let index = [
   pre [] [
-    span [_class "static"] [ rawText "https://github.com/compare/"]
-    span [_class "dynamic"] [rawText "owner"]
-    span [_class "static"] [rawText "/"]
-    span [_class "dynamic"] [rawText "repository"]
-    span [_class "static"] [rawText "/compare/"]
-    span [_class "dynamic"] [rawText "base"]
-    span [_class "static"] [rawText "..."]
-    span [_class "dynamic"] [rawText "master"]
-    br []
-    br []
-    rawText exampleNotes
+    yield! (_fancyCompareUrl "owner" "repository" "base" (Some "master"))
+    yield br []
+    yield br []
+    yield rawText exampleNotes
   ]
 ]
 
