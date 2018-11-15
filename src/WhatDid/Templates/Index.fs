@@ -13,7 +13,7 @@ refactor: Rewrite in $LATEST_THING  https://github.com/owner/repository/pull/8
 style:    Make it look alright      https://github.com/owner/repository/pull/20"
     .Trim()
 
-let index' = [
+let index = [
   pre [] [
     span [_class "static"] [ rawText "https://github.com/compare/"]
     span [_class "dynamic"] [rawText "owner"]
@@ -29,4 +29,4 @@ let index' = [
   ]
 ]
 
-let layout = App.layout index'
+let layout = App.layout index
