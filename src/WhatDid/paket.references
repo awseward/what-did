@@ -1,0 +1,11 @@
+FSharp.Core
+dotenv.net
+Microsoft.AspNetCore.Authentication.OpenIdConnect
+Saturn
+Saturn.Extensions.Authorization
+Saturn.Extensions.Turbolinks
+
+Dapper
+Npgsql
+
+dotnet-saturn

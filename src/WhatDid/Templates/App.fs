@@ -1,0 +1,20 @@
+module App
+
+open Giraffe.GiraffeViewEngine
+
+let layout (content: XmlNode list) =
+    html [_class "has-navbar-fixed-top"] [
+        head [] [
+            meta [_charset "utf-8"]
+            meta [_name "viewport"; _content "width=device-width, initial-scale=1" ]
+            title [] [encodedText "What did we do?"]
+            link [_rel "stylesheet"; _href "/app.css" ]
+            script [_src "https://cdnjs.cloudflare.com/ajax/libs/turbolinks/5.1.1/turbolinks.js"] []
+            script [_defer; _src "/app.js"] []
+        ]
+
+        body [] [
+            yield h1 [] [rawText "What did we do?"]
+            yield! content
+        ]
+    ]
