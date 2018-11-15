@@ -15,6 +15,6 @@ let layout (content: XmlNode list) =
 
         body [] [
             yield h1 [] [rawText "What did we do?"]
-            yield! content
+            yield div [_class "main-container"] content
         ]
     ]

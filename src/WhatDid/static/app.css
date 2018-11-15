@@ -2,7 +2,7 @@
 
 body {
   margin: 40px auto;
-  max-width: 650px;
+  max-width: 800px;
   line-height: 1.6;
   font-size: 18px;
   color: #333;
@@ -24,10 +24,29 @@ body {
   font-family: Fira Code, monospace;
 }
 
-a {
-  color: #3F51B5;
+.main-container a {
+  text-decoration: none;
+  color: #2196f3;
 }
 
 a:hover {
   color: #009688;
+}
+
+.main-container {
+  font-size: 14px;
+  margin-top: 30px;
+}
+
+input[type=text] {
+  border: none;
+  background: none;
+  width: 80px;
+  padding: 0px;
+  margin: 0px;
+  font-size: 14px;
+}
+
+span.static {
+  color: #3F51B599;
 }
