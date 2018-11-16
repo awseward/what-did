@@ -11,6 +11,7 @@
     <Compile Include="Envars.fs" />
     <Compile Include="HttpHandlers.fs" />
     <Compile Include="Router.fs" />
+    <Compile Include="Config.fs" />
     <Compile Include="Program.fs" />
     <Content Include="static/*.*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

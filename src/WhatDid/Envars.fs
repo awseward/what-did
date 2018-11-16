@@ -12,7 +12,7 @@ let get name =
   |> tryGet
   |> Option.defaultWith (fun () -> invalidArg name "Missing required environment variable")
 
-let getEnv () =
-  "ENV"
+let getOr defaultValue name =
+  name
   |> tryGet
-  |> Option.defaultValue "development"
+  |> Option.defaultValue defaultValue
