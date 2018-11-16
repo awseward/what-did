@@ -1,5 +1,5 @@
-FSharp.Core
 dotenv.net
+FSharp.Core
 Saturn
 Saturn.Extensions.Authorization
 Saturn.Extensions.Turbolinks

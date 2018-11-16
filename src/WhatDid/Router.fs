@@ -1,9 +1,9 @@
 module Router
 
-open Saturn
 open Giraffe.Core
 open Giraffe.ResponseWriters
-open WhatDid.HttpHandlers
+open HttpHandlers
+open Saturn
 open System
 
 let browser = pipeline {

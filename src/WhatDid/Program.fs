@@ -1,9 +1,9 @@
-module Server
+module Program
 
-open System
 open dotenv.net
 open FSharp.Control.Tasks.ContextInsensitive
 open Saturn
+open System
 
 DotEnv.Config (
   throwOnError = false,
