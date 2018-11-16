@@ -1,10 +1,13 @@
 module Router
 
+open FSharp.Control.Tasks.V2.ContextInsensitive
 open Giraffe.Core
 open Giraffe.ResponseWriters
 open HttpHandlers
+open Microsoft.AspNetCore.Authentication
 open Saturn
 open System
+open Types
 
 let browser = pipeline {
   plug (requireHttps true)
@@ -14,22 +17,36 @@ let browser = pipeline {
   set_header "x-pipeline-type" "Browser"
 }
 
+module TempHandler =
+  let private _getTokenAsync (ctx: Microsoft.AspNetCore.Http.HttpContext) =
+    task {
+      let! t = ctx.GetTokenAsync "access_token"
+
+      if String.IsNullOrWhiteSpace t then return None
+      else return Some t
+    }
+
+  let getHandler parts : HttpHandler = (fun next ctx ->
+    task {
+      let! oauthToken = _getTokenAsync ctx
+      let! notes = GitHub.PLACEHOLDER_getCommitJson oauthToken parts
+      let xmlNode = Index.layout parts notes
+
+      return! (htmlView xmlNode next ctx)
+    }
+  )
+
 type RouterBuilder with
   [<CustomOperation("render")>]
-  member __.Render (state: RouterState, partsFn: Index.Parts -> Index.Parts) =
-    Index.Parts.Empty
-    |> partsFn
-    |> Index.layout'
-    |> htmlView
-    |> fun handler -> __.Get (state, "", handler)
-  [<CustomOperation("renderRoot")>]
-  member __.RenderRoot (state: RouterState, partsFn: Index.Parts -> Index.Parts) =
-    Index.Parts.Empty
-    |> partsFn
-    |> Index.layout'
-    |> htmlView
-    |> fun handler -> __.Get (state, "/", handler)
+  member __.Render (state, partsFn) =
+    let handler =
+      Parts.Empty
+      |> partsFn
+      |> TempHandler.getHandler
 
+    state
+    |> fun s -> __.Get (s, "", handler)
+    |> fun s -> __.Get (s, "/", handler)
 
 let rangeRouter owner repo (baseRev, headRev) = router {
   render (fun x ->
@@ -73,9 +90,13 @@ let ownerRouter owner = router {
 let browserRouter = router {
   not_found_handler (setStatusCode 404 >=> htmlView NotFound.layout)
   pipe_through browser
+  // TODO: Only require authentication if we seem to need it. Shouldn't need to
+  // auth if you're just using on a public repo.
+  pipe_through ( pipeline { requires_authentication (Giraffe.Auth.challenge "GitHub") } )
+  get "/signin-github-oauth" (redirectTo false "/")
 
   forwardf "/%s" ownerRouter
-  renderRoot id
+  render id
 }
 
 //Other scopes may use different pipelines and error handlers

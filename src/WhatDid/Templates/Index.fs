@@ -2,25 +2,7 @@ module Index
 
 open Giraffe.GiraffeViewEngine
 open System
-
-type Parts = {
-  owner: string option
-  repo: string option
-  baseRev: string option
-  headRev: string option
-}
-  with
-    static member Empty = { owner = None; repo = None; baseRev = None; headRev = None }
-
-let private exampleNotes =
-  @"
-feat:     Feature for person        https://github.com/owner/repository/pull/12
-fix:      Some dumb bug             https://github.com/owner/repository/pull/21
-fix:      Another bug               https://github.com/owner/repository/pull/18
-fix:      So many bugs              https://github.com/owner/repository/pull/30
-refactor: Rewrite in $LATEST_THING  https://github.com/owner/repository/pull/8
-style:    Make it look alright      https://github.com/owner/repository/pull/20"
-    .Trim()
+open Types
 
 let private _fancyCompareUrl owner repository baseRev headRevOpt =
   let headRev = headRevOpt |> Option.defaultValue "master"
@@ -36,23 +18,22 @@ let private _fancyCompareUrl owner repository baseRev headRevOpt =
     span [_class "primary"] [rawText headRev]
   ]
 
-let index' owner repository baseRev headRevOpt = [
+let index owner repository baseRev headRevOpt notesNode = [
   pre [] [
     yield! (_fancyCompareUrl owner repository baseRev headRevOpt)
     yield br []
     yield br []
-    yield rawText exampleNotes
+    yield notesNode
   ]
 ]
 
-let layout owner repository baseRev headRevOpt =
-  App.layout (index' owner repository baseRev headRevOpt)
+let private ``_or?`` = Option.defaultValue "?"
 
-let private ``_or?`` opt = defaultArg opt "?"
-
-let layout' (parts: Parts) =
-  layout
-    (``_or?`` parts.owner)
-    (``_or?`` parts.repo)
-    (``_or?`` parts.baseRev)
-    parts.headRev
+let layout parts notesText =
+  App.layout <|
+    index
+      (``_or?`` parts.owner)
+      (``_or?`` parts.repo)
+      (``_or?`` parts.baseRev)
+      parts.headRev
+      (rawText notesText)

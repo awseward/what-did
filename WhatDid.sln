@@ -2,6 +2,10 @@
 # Visual Studio 15
 VisualStudioVersion = 15.0.26124.0
 MinimumVisualStudioVersion = 15.0.26124.0
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{7D565DC1-5232-4472-874B-512B25687BCE}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "WhatDid", "src\WhatDid\WhatDid.fsproj", "{836E077E-508E-43F7-BF02-A2F9FE6841FC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,5 +19,20 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{836E077E-508E-43F7-BF02-A2F9FE6841FC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{836E077E-508E-43F7-BF02-A2F9FE6841FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{836E077E-508E-43F7-BF02-A2F9FE6841FC}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{836E077E-508E-43F7-BF02-A2F9FE6841FC}.Debug|x64.Build.0 = Debug|Any CPU
+		{836E077E-508E-43F7-BF02-A2F9FE6841FC}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{836E077E-508E-43F7-BF02-A2F9FE6841FC}.Debug|x86.Build.0 = Debug|Any CPU
+		{836E077E-508E-43F7-BF02-A2F9FE6841FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{836E077E-508E-43F7-BF02-A2F9FE6841FC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{836E077E-508E-43F7-BF02-A2F9FE6841FC}.Release|x64.ActiveCfg = Release|Any CPU
+		{836E077E-508E-43F7-BF02-A2F9FE6841FC}.Release|x64.Build.0 = Release|Any CPU
+		{836E077E-508E-43F7-BF02-A2F9FE6841FC}.Release|x86.ActiveCfg = Release|Any CPU
+		{836E077E-508E-43F7-BF02-A2F9FE6841FC}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{836E077E-508E-43F7-BF02-A2F9FE6841FC} = {7D565DC1-5232-4472-874B-512B25687BCE}
 	EndGlobalSection
 EndGlobal

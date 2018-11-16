@@ -1,10 +1,9 @@
 module Program
 
-open Config
 open dotenv.net
+open OAuthStuff
 open Saturn
 open System
-
 
 DotEnv.Config (
   throwOnError = false,
@@ -31,6 +30,7 @@ let app = application {
   use_gzip
   use_config (fun _ -> config)
   use_turbolinks
+  use_github_oauth_ssl_termination_friendly config.githubOauthClientId config.githubOauthClientSecret "/signin-github-oauth" [("login", "githubUsername"); ("name", "fullName")]
 }
 
 [<EntryPoint>]
