@@ -3,6 +3,15 @@ module Index
 open Giraffe.GiraffeViewEngine
 open System
 
+type Parts = {
+  owner: string option
+  repo: string option
+  baseRev: string option
+  headRev: string option
+}
+  with
+    static member Empty = { owner = None; repo = None; baseRev = None; headRev = None }
+
 let private exampleNotes =
   @"
 feat:     Feature for person        https://github.com/owner/repository/pull/12
@@ -17,7 +26,7 @@ let private _fancyCompareUrl owner repository baseRev headRevOpt =
   let headRev = headRevOpt |> Option.defaultValue "master"
 
   [
-    span [_class "secondary"] [ rawText "https://github.com/compare/"]
+    span [_class "secondary"] [ rawText "https://github.com/"]
     span [_class "primary"] [rawText owner]
     span [_class "secondary"] [rawText "/"]
     span [_class "primary"] [rawText repository]
@@ -27,14 +36,23 @@ let private _fancyCompareUrl owner repository baseRev headRevOpt =
     span [_class "primary"] [rawText headRev]
   ]
 
-
-let index = [
+let index' owner repository baseRev headRevOpt = [
   pre [] [
-    yield! (_fancyCompareUrl "owner" "repository" "base" (Some "master"))
+    yield! (_fancyCompareUrl owner repository baseRev headRevOpt)
     yield br []
     yield br []
     yield rawText exampleNotes
   ]
 ]
 
-let layout = App.layout index
+let layout owner repository baseRev headRevOpt =
+  App.layout (index' owner repository baseRev headRevOpt)
+
+let private ``_or?`` opt = defaultArg opt "?"
+
+let layout' (parts: Parts) =
+  layout
+    (``_or?`` parts.owner)
+    (``_or?`` parts.repo)
+    (``_or?`` parts.baseRev)
+    parts.headRev
