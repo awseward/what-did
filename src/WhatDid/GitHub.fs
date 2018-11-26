@@ -42,6 +42,14 @@ open System.Net.Http.Headers
 let private _tryGetNextUrl (headers: HttpHeaders) =
   "Link"
   |> headers.GetValues
+  |> Seq.exactlyOne
+  |> fun str -> str.Split (',', StringSplitOptions.RemoveEmptyEntries)
+  |> Seq.map (fun str -> str.Trim ())
+  |> fun x ->
+      printfn "____________ count: %i" (x |> Seq.length)
+      printfn "____________ values: %A" x;
+
+      x
   |> List.ofSeq
   |> List.tryFind (fun str -> str.EndsWith "rel=\"next\"")
   |> Option.map (fun str ->
@@ -52,6 +60,7 @@ let private _tryGetNextUrl (headers: HttpHeaders) =
       |> String
       |> Uri
   )
+  |> fun x -> printfn "____________ next: %A" x; x
 
 let private _getCommits oauthToken (state: PaginatedState) =
   match state.next with
