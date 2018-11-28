@@ -87,8 +87,21 @@ let getAllCommitsInRange (oauthToken: string option) (parts: Parts) =
       sprintf "https://api.github.com/repos/%s/%s/commits?sha=%s&page=1&per_page=%u" owner repo baseRev _perPage
       |> Uri
       |> _getPaginated oauthToken
-      |> AsyncSeq.map (fun xs ->
-          xs |> List.filter (fun c -> c.commit.message.Contains "Merge pull request #")
+      |> AsyncSeq.takeWhileInclusive (fun commits ->
+          match parts.headRev with
+          | None -> true
+          | Some headRev ->
+              commits
+              |> List.exists (fun x -> x.sha.StartsWith headRev)
+      )
+      |> AsyncSeq.map (fun commits ->
+          commits
+          |> List.takeWhile (fun c ->
+              match parts.headRev with
+              | None -> true
+              | Some headRev -> not <| c.sha.StartsWith headRev
+          )
+          |> List.filter (fun c -> c.commit.message.Contains "Merge pull request #")
       )
       |> AsyncSeq.filter (not << List.isEmpty)
   | _ ->
