@@ -1,5 +1,6 @@
 module Router
 
+open FSharp.Control
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open Giraffe.Core
 open Giraffe.ResponseWriters
@@ -7,6 +8,7 @@ open HttpHandlers
 open Microsoft.AspNetCore.Authentication
 open Saturn
 open System
+open System.Threading.Tasks
 open Types
 
 let browser = pipeline {
@@ -26,10 +28,18 @@ module TempHandler =
       else return Some t
     }
 
+  let private _getReleaseNotes (oauthToken: string option) (parts: Parts) =
+    parts
+    |> GitHub.getAllCommitsInRange oauthToken
+    |> AsyncSeq.toBlockingSeq
+    |> Seq.collect id
+    |> Seq.map (fun x -> x.commit.message)
+    |> String.concat Environment.NewLine
+
   let getHandler parts : HttpHandler = (fun next ctx ->
     task {
       let! oauthToken = _getTokenAsync ctx
-      let! notes = GitHub.PLACEHOLDER_getCommitJson oauthToken parts
+      let notes = _getReleaseNotes oauthToken parts
       let xmlNode = Index.layout parts notes
 
       return! (htmlView xmlNode next ctx)

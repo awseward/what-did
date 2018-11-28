@@ -21,6 +21,10 @@ let private (|HasBareMinimum|_|) (parts: Parts) =
       baseRev = Some baseRev } -> Some (owner, repo, baseRev)
   | _ -> None
 
+let private failMissingPieces (parts: Parts) =
+  eprintfn "WARNING: Must have values for owner, repo, baseRev. %A" parts
+  exn "FIXME"
+
 type CommitListNestedObj = { message: string }
 type CommitListOuterObj = { sha: string; commit: CommitListNestedObj }
 
@@ -45,13 +49,7 @@ let private _tryGetNextUrl (headers: HttpHeaders) =
   |> Seq.exactlyOne
   |> fun str -> str.Split (',', StringSplitOptions.RemoveEmptyEntries)
   |> Seq.map (fun str -> str.Trim ())
-  |> fun x ->
-      printfn "____________ count: %i" (x |> Seq.length)
-      printfn "____________ values: %A" x;
-
-      x
-  |> List.ofSeq
-  |> List.tryFind (fun str -> str.EndsWith "rel=\"next\"")
+  |> Seq.tryFind (fun str -> str.EndsWith "rel=\"next\"")
   |> Option.map (fun str ->
       str
       |> Seq.skipWhile (fun ch -> ch = '<')
@@ -60,7 +58,6 @@ let private _tryGetNextUrl (headers: HttpHeaders) =
       |> String
       |> Uri
   )
-  |> fun x -> printfn "____________ next: %A" x; x
 
 let private _getPaginated (oauthToken: string option) (initialUri: Uri) =
   initialUri
@@ -95,25 +92,4 @@ let getAllCommitsInRange (oauthToken: string option) (parts: Parts) =
       )
       |> AsyncSeq.filter (not << List.isEmpty)
   | _ ->
-      eprintfn "WARNING: Must have values for owner, repo, baseRev. %A" parts
-      failwith "FIXME"
-
-let PLACEHOLDER_getCommitJson (oauthToken: string option) (parts: Parts) =
-  match parts with
-  | { owner = Some owner
-      repo = Some repo
-      baseRev = Some baseRev } ->
-        task {
-          let url = sprintf "https://api.github.com/repos/%s/%s/commits/%s" owner repo baseRev
-          use message = new HttpRequestMessage (HttpMethod.Get, url)
-          oauthToken
-          |> Option.map (sprintf "token %s")
-          |> Option.iter (fun t -> message.Headers.Add ("Authorization", t))
-          use! resp = _httpClient.SendAsync (message, HttpCompletionOption.ResponseHeadersRead)
-          let! json = resp.Content.ReadAsStringAsync ()
-
-          if json.Length <= 100 then return json
-          else
-            return json.Substring (0, 100) |> sprintf "%s..."
-        }
-  | _ -> Task.FromResult "FIXME"
+      raise <| failMissingPieces parts
