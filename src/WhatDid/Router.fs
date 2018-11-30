@@ -30,10 +30,26 @@ module TempHandler =
 
   let private _getReleaseNotes (oauthToken: string option) (parts: Parts) =
     parts
-    |> GitHub.getAllCommitsInRange oauthToken
+    |> GitHub.getAllPrMergeCommitsInRange oauthToken
     |> AsyncSeq.toBlockingSeq
     |> Seq.collect id
-    |> Seq.map (fun x -> x.commit.message)
+    |> Seq.map (fun x ->
+        x.commit.message
+        |> Seq.skipWhile (fun ch -> ch <> '#')
+        |> Seq.skipWhile (fun ch -> ch = '#')
+        |> Seq.takeWhile (fun ch -> ch <> ' ')
+        |> Seq.toArray
+        |> String
+        |> Int32.Parse
+        |> ASeward.MiscTools.ReleaseNotes.GitHub.getPullRequestAsync
+              oauthToken.Value // FIXME
+              parts.owner.Value // FIXME
+              parts.repo.Value // FIXME
+    )
+    |> Async.Parallel
+    |> Async.RunSynchronously
+    |> Array.map (fun pr -> sprintf "%s %s" pr.title pr.html_url)
+    |> Seq.sort
     |> String.concat Environment.NewLine
 
   let getHandler parts : HttpHandler = (fun next ctx ->

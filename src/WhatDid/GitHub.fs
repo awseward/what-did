@@ -71,6 +71,7 @@ let private _getPaginated (oauthToken: string option) (initialUri: Uri) =
              oauthToken
              |> Option.map (sprintf "token %s")
              |> Option.iter (fun t -> request.Headers.Add ("Authorization", t))
+             printfn "GET %A" uri
              use! response = _httpClient.SendAsync (request, HttpCompletionOption.ResponseHeadersRead)
              let! json = response.Content.ReadAsStringAsync ()
              let commits = JsonConvert.DeserializeObject<CommitListOuterObj list> json
@@ -81,10 +82,10 @@ let private _getPaginated (oauthToken: string option) (initialUri: Uri) =
            |> Async.AwaitTask
       )
 
-let getAllCommitsInRange (oauthToken: string option) (parts: Parts) =
+let getAllPrMergeCommitsInRange (oauthToken: string option) (parts: Parts) =
   match parts with
   | HasBareMinimum (owner, repo, baseRev) ->
-      sprintf "https://api.github.com/repos/%s/%s/commits?sha=%s&page=1&per_page=%u" owner repo baseRev _perPage
+      sprintf "https://api.github.com/repos/%s/%s/commits?sha=%s&page=1&per_page=%u" owner repo parts.headRev.Value _perPage
       |> Uri
       |> _getPaginated oauthToken
       |> AsyncSeq.takeWhileInclusive (fun commits ->
@@ -92,14 +93,16 @@ let getAllCommitsInRange (oauthToken: string option) (parts: Parts) =
           | None -> true
           | Some headRev ->
               commits
-              |> List.exists (fun x -> x.sha.StartsWith headRev)
+              |> List.exists (fun x -> x.sha.StartsWith baseRev)
+              |> not
       )
       |> AsyncSeq.map (fun commits ->
           commits
+
           |> List.takeWhile (fun c ->
               match parts.headRev with
               | None -> true
-              | Some headRev -> not <| c.sha.StartsWith headRev
+              | Some headRev -> not <| c.sha.StartsWith baseRev
           )
           |> List.filter (fun c -> c.commit.message.Contains "Merge pull request #")
       )
