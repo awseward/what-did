@@ -14,15 +14,16 @@ let private _httpClient =
   c
 let private _perPage = 100
 
-let private (|HasBareMinimum|_|) (parts: Parts) =
+let private (|HasEverything|_|) (parts: Parts) =
   match parts with
   | { owner = Some owner
       repo = Some repo
-      baseRev = Some baseRev } -> Some (owner, repo, baseRev)
+      baseRev = Some baseRev
+      headRev = Some headRev } -> Some (owner, repo, baseRev, headRev)
   | _ -> None
 
 let private failMissingPieces (parts: Parts) =
-  eprintfn "WARNING: Must have values for owner, repo, baseRev. %A" parts
+  eprintfn "WARNING: Must have values for owner, repo, baseRev, headRev. %A" parts
   exn "FIXME"
 
 type CommitListNestedObj = { message: string }
@@ -84,17 +85,14 @@ let private _getPaginated (oauthToken: string option) (initialUri: Uri) =
 
 let getAllPrMergeCommitsInRange (oauthToken: string option) (parts: Parts) =
   match parts with
-  | HasBareMinimum (owner, repo, baseRev) ->
-      sprintf "https://api.github.com/repos/%s/%s/commits?sha=%s&page=1&per_page=%u" owner repo parts.headRev.Value _perPage
+  | HasEverything (owner, repo, baseRev, headRev) ->
+      sprintf "https://api.github.com/repos/%s/%s/commits?sha=%s&page=1&per_page=%u" owner repo headRev _perPage
       |> Uri
       |> _getPaginated oauthToken
       |> AsyncSeq.takeWhileInclusive (fun commits ->
-          match parts.headRev with
-          | None -> true
-          | Some headRev ->
-              commits
-              |> List.exists (fun x -> x.sha.StartsWith baseRev)
-              |> not
+          commits
+          |> List.exists (fun x -> x.sha.StartsWith baseRev)
+          |> not
       )
       |> AsyncSeq.map (fun commits ->
           commits

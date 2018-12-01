@@ -1,5 +1,6 @@
 module Router
 
+open ASeward.MiscTools
 open FSharp.Control
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open Giraffe.Core
@@ -28,6 +29,15 @@ module TempHandler =
       else return Some t
     }
 
+  let private _getPrNumFromCommitMessage (message: string) =
+    message
+    |> Seq.skipWhile (fun ch -> ch <> '#')
+    |> Seq.skipWhile (fun ch -> ch = '#')
+    |> Seq.takeWhile (fun ch -> ch <> ' ')
+    |> Seq.toArray
+    |> String
+    |> Int32.Parse
+
   let private _getReleaseNotes (oauthToken: string option) (parts: Parts) =
     parts
     |> GitHub.getAllPrMergeCommitsInRange oauthToken
@@ -35,13 +45,8 @@ module TempHandler =
     |> Seq.collect id
     |> Seq.map (fun x ->
         x.commit.message
-        |> Seq.skipWhile (fun ch -> ch <> '#')
-        |> Seq.skipWhile (fun ch -> ch = '#')
-        |> Seq.takeWhile (fun ch -> ch <> ' ')
-        |> Seq.toArray
-        |> String
-        |> Int32.Parse
-        |> ASeward.MiscTools.ReleaseNotes.GitHub.getPullRequestAsync
+        |> _getPrNumFromCommitMessage
+        |> ReleaseNotes.GitHub.getPullRequestAsync
               oauthToken.Value // FIXME
               parts.owner.Value // FIXME
               parts.repo.Value // FIXME
