@@ -1,7 +1,9 @@
 framework: auto-detect
 source https://api.nuget.org/v3/index.json
 
+nuget ASeward.MiscTools
 nuget dotenv.net
+nuget FSharp.Control.AsyncSeq
 nuget FSharp.Core
 nuget Giraffe 1.1
 nuget Saturn
