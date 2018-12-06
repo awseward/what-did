@@ -173,8 +173,4 @@ let disambiguateAsync (oauthToken: string option) (owner: string) (repo: string)
     // ```
     | _               , (Some _ as result) -> return result
     | None            , None               -> return! tryShowBranchAsync ()
-    // TODO: Represent this state a little better, or at least log
-    | _ ->
-        eprintfn "WARNING! Undesired state (don't want both commit AND tag for rawRevisionName '%s'): %A %A" rawRevisionName commit tag
-        return None
   }
