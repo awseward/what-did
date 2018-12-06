@@ -14,6 +14,7 @@ let private _httpClient =
   c.DefaultRequestHeaders.Add ("User-Agent", "whatdid")
   c.DefaultRequestHeaders.Add ("Accept", "application/vnd.github.v3+json")
   c
+
 let private _perPage = 100
 let private _createGet (oauthToken: string option) (uri: Uri) =
   let req = new HttpRequestMessage (HttpMethod.Get, uri)
@@ -26,14 +27,20 @@ let private _deserializeAsJsonAsync<'a> (response: HttpResponseMessage) =
     let! json = response.Content.ReadAsStringAsync ()
     return JsonConvert.DeserializeObject<'a> json
   }
-let private _getAsync<'a> (oauthToken: string option) (uri: Uri) =
+let private _tryGetAsync<'a> (oauthToken: string option) (uri: Uri) =
   task {
+    printfn "GET %A" uri
     use req = _createGet oauthToken uri
     let! response = _sendAsync req
-    return! _deserializeAsJsonAsync<'a> response
+
+    if response.IsSuccessStatusCode then
+      let! result = _deserializeAsJsonAsync<'a> response
+      return Some result
+    else
+      return None
   }
 
-module private Temp =
+module Temp =
   let (|HasEverything|_|) (parts: Parts) =
     match parts with
     | { owner = Some owner
@@ -112,22 +119,62 @@ let getAllPrMergeCommitsInRange (oauthToken: string option) (parts: Parts) =
   | _ ->
       raise <| failMissingPieces parts
 
-type private HasSha = { sha: string }
-type private BranchResp = { commit: HasSha }
-type private TagResp = { object: HasSha }
+type HasSha = { sha: string }
+type BranchResp = { commit: HasSha }
+type TagResp = { object: HasSha }
 
-let resolveCommitShaAsync (oauthToken: string option) (owner: string) (repo: string) =
-  function
-  | Commit sha -> Task.FromResult sha
-  | Branch (BranchName name) ->
-      let uri = Uri <| sprintf "https://api.github.com/repos/%s/%s/branches/%s" owner repo name
-      task {
-        let! { commit = { sha = sha } } = uri |> _getAsync<BranchResp> oauthToken
-        return CommitSha sha
-      }
-  | Tag (TagName name) ->
-      let uri = Uri <| sprintf "https://api.github.com/repos/%s/%s/git/refs/tags/%s" owner repo name
-      task {
-        let! { object = { sha = sha } } = uri |> _getAsync<TagResp> oauthToken
-        return CommitSha sha
-      }
+/// This method tries to resolve some type of revision using `rawRevisionName`.
+///
+/// Tags or commit SHAs are preferred, as they're less ambiguous than branch
+/// names. It should be more or less safe to assume that there won't be
+/// collisions between the two, as that would likely make git usage problematic
+/// in general.
+///
+/// If `rawRevisionName` does not resolve to either a SHA or a tag, we fall back
+/// to assume that `rawRevisionName` must then be a branch name, and we attempt
+/// to fetch the SHA for the head of that branch.
+let disambiguateAsync (oauthToken: string option) (owner: string) (repo: string) (rawRevisionName: string) =
+  // FIXME: will probably need to get some kind of error handling in place
+  // on the HTTP requests in here.
+  let tryShowCommitAsync () = task {
+    let uri = Uri <| sprintf "https://api.github.com/repos/%s/%s/commits/%s" owner repo rawRevisionName
+    let! objOpt = uri |> _tryGetAsync<HasSha> oauthToken
+
+    return
+      objOpt
+      |> Option.map (fun { HasSha.sha = sha } -> UCommit (CommitSha sha))
+  }
+  let tryShowTagAsync () = task {
+    let uri = Uri <| sprintf "https://api.github.com/repos/%s/%s/git/refs/tags/%s" owner repo rawRevisionName
+    let! objOpt = uri |> _tryGetAsync<TagResp> oauthToken
+
+    return
+      objOpt
+      |> Option.map (fun { object = { sha = sha } } -> UTag (TagName rawRevisionName, CommitSha sha))
+  }
+  let tryShowBranchAsync () = task {
+    let uri = Uri <| sprintf "https://api.github.com/repos/%s/%s/branches/%s" owner repo rawRevisionName
+    let! objOpt = uri |> _tryGetAsync<BranchResp> oauthToken
+
+    return
+      objOpt
+      |> Option.map (fun { commit = { sha = sha } } -> UBranch (BranchName rawRevisionName, CommitSha sha))
+  }
+
+  task {
+    let! commit = tryShowCommitAsync ()
+    let! tag = tryShowTagAsync ()
+
+    match commit, tag with
+    | Some _ as result, None               -> return result
+    // Apparently GitHub will happily give you back a commit even if you do something like this:
+    // ```
+    // GET https://api.github.com/repos/:owner:/:repo:/commits/:tag_name:
+    // ```
+    | _               , (Some _ as result) -> return result
+    | None            , None               -> return! tryShowBranchAsync ()
+    // TODO: Represent this state a little better, or at least log
+    | _ ->
+        eprintfn "WARNING! Undesired state (don't want both commit AND tag for rawRevisionName '%s'): %A %A" rawRevisionName commit tag
+        return None
+  }

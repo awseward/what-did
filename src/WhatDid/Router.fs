@@ -38,30 +38,60 @@ module TempHandler =
     |> String
     |> Int32.Parse
 
-  let private _getReleaseNotes (oauthToken: string option) (parts: Parts) =
-    parts
-    |> GitHub.getAllPrMergeCommitsInRange oauthToken
-    |> AsyncSeq.toBlockingSeq
-    |> Seq.collect id
-    |> Seq.map (fun x ->
-        x.commit.message
-        |> _getPrNumFromCommitMessage
-        |> ReleaseNotes.GitHub.getPullRequestAsync
-              oauthToken.Value // FIXME
-              parts.owner.Value // FIXME
-              parts.repo.Value // FIXME
-    )
-    |> Async.Parallel
-    |> Async.RunSynchronously
-    |> Array.map (fun pr -> sprintf "%s %s" pr.title pr.html_url)
-    |> Seq.sort
-    |> String.concat Environment.NewLine
+  open GitHub.Temp
+
+  let private _disambiguateRevsAsync (oauthToken: string option) (parts: Parts) =
+    match parts with
+    | HasEverything (owner, repo, baseRev, headRev) ->
+        let disambiguateAsync = GitHub.disambiguateAsync oauthToken owner repo
+        task {
+          let! uBaseOpt = disambiguateAsync baseRev
+          let! uHeadOpt = disambiguateAsync headRev
+
+          match uBaseOpt, uHeadOpt with
+          | Some uBaseRev, Some uHeadRev ->
+              return
+                { parts with
+                    baseRev = Some <| uBaseRev.TEMP_GetShaString ()
+                    headRev = Some <| uHeadRev.TEMP_GetShaString () }
+          | _ ->
+              // FIXME
+              return parts
+        }
+    | _ ->
+        raise <| failMissingPieces parts
+
+  let private _getReleaseNotesAsync (oauthToken: string option) (parts: Parts) =
+    async {
+      let! prs =
+        parts
+        |> GitHub.getAllPrMergeCommitsInRange oauthToken
+        |> AsyncSeq.toBlockingSeq
+        |> Seq.collect id
+        |> Seq.map (fun x ->
+            x.commit.message
+            |> _getPrNumFromCommitMessage
+            |> ReleaseNotes.GitHub.getPullRequestAsync
+                  oauthToken.Value // FIXME
+                  parts.owner.Value // FIXME
+                  parts.repo.Value // FIXME
+        )
+        |> Async.Parallel
+
+      return
+        prs
+        |> Array.map (fun pr -> sprintf "* %s %s" pr.title pr.html_url)
+        |> Seq.sort
+        |> String.concat Environment.NewLine
+    }
+    |> Async.StartAsTask
 
   let getHandler parts : HttpHandler = (fun next ctx ->
     task {
       let! oauthToken = _getTokenAsync ctx
-      let notes = _getReleaseNotes oauthToken parts
-      let xmlNode = Index.layout parts notes
+      let! parts' = _disambiguateRevsAsync oauthToken parts
+      let! notes = _getReleaseNotesAsync oauthToken parts'
+      let xmlNode = Index.layout parts' notes
 
       return! (htmlView xmlNode next ctx)
     }
@@ -95,7 +125,8 @@ let rangeRouterNoHead owner repo baseRev = router {
         owner = Some owner
         repo = Some repo
         baseRev = Some baseRev
-        headRev = None }
+        // FIXME: Probably want to handle this a little differently, but this works for now.
+        headRev = Some "master" }
   )
 }
 
