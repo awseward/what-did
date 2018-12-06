@@ -40,7 +40,7 @@ module TempHandler =
 
   open GitHub.Temp
 
-  let private _disambiguateRevsAsync (oauthToken: string option) (parts: Parts) =
+  let private _disambiguateRevsAsync oauthToken parts =
     match parts with
     | HasEverything (owner, repo, baseRev, headRev) ->
         let disambiguateAsync = GitHub.disambiguateAsync oauthToken owner repo
@@ -48,20 +48,28 @@ module TempHandler =
           let! uBaseOpt = disambiguateAsync baseRev
           let! uHeadOpt = disambiguateAsync headRev
 
-          match uBaseOpt, uHeadOpt with
-          | Some uBaseRev, Some uHeadRev ->
-              return
-                { parts with
-                    baseRev = Some <| uBaseRev.TEMP_GetShaString ()
-                    headRev = Some <| uHeadRev.TEMP_GetShaString () }
-          | _ ->
-              // FIXME
-              return parts
+          // FIXME: This isn't quite right still, since if we couldn't
+          // disambiguate one of the base or head, I'm not sure that we want to
+          // continue on.
+          return
+            parts
+            |> fun p ->
+                uBaseOpt
+                |> Option.map Revision.GetShortSha
+                |> function
+                    | Some _ as rev -> { p with baseRev = rev }
+                    | None -> p
+            |> fun p ->
+                uHeadOpt
+                |> Option.map Revision.GetShortSha
+                |> function
+                    | Some _ as rev -> { p with headRev = rev }
+                    | None -> p
         }
     | _ ->
         raise <| failMissingPieces parts
 
-  let private _getReleaseNotesAsync (oauthToken: string option) (parts: Parts) =
+  let private _getReleaseNotesAsync oauthToken parts =
     async {
       let! prs =
         parts
@@ -101,7 +109,7 @@ type RouterBuilder with
   [<CustomOperation("render")>]
   member __.Render (state, partsFn) =
     let handler =
-      Parts.Empty
+      RawParts.Empty
       |> partsFn
       |> TempHandler.getHandler
 

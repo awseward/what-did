@@ -16,7 +16,7 @@ let private _httpClient =
   c
 
 let private _perPage = 100
-let private _createGet (oauthToken: string option) (uri: Uri) =
+let private _createGet oauthToken (uri: Uri) =
   let req = new HttpRequestMessage (HttpMethod.Get, uri)
   oauthToken |> Option.iter (fun token -> req.Headers.Add ("Authorization", sprintf "token %s" token))
   req
@@ -27,7 +27,7 @@ let private _deserializeAsJsonAsync<'a> (response: HttpResponseMessage) =
     let! json = response.Content.ReadAsStringAsync ()
     return JsonConvert.DeserializeObject<'a> json
   }
-let private _tryGetAsync<'a> (oauthToken: string option) (uri: Uri) =
+let private _tryGetAsync<'a> oauthToken uri =
   task {
     printfn "GET %A" uri
     use req = _createGet oauthToken uri
@@ -41,14 +41,14 @@ let private _tryGetAsync<'a> (oauthToken: string option) (uri: Uri) =
   }
 
 module Temp =
-  let (|HasEverything|_|) (parts: Parts) =
+  let (|HasEverything|_|) (parts: RawParts) =
     match parts with
     | { owner = Some owner
         repo = Some repo
         baseRev = Some baseRev
         headRev = Some headRev } -> Some (owner, repo, baseRev, headRev)
     | _ -> None
-  let failMissingPieces (parts: Parts) =
+  let failMissingPieces (parts: RawParts) =
     eprintfn "WARNING: Must have values for owner, repo, baseRev, headRev. %A" parts
     exn "FIXME"
 
@@ -77,7 +77,7 @@ module Pagination =
         |> Uri
     )
 
-  let getPaginated (reqF: Uri -> HttpRequestMessage) (deserializeAsync: HttpResponseMessage -> Task<'a list>) (initialUri: Uri) =
+  let getPaginated (reqF: Uri -> HttpRequestMessage) (deserializeAsync: HttpResponseMessage -> Task<'a list>) initialUri =
     initialUri
     |> Some
     |> AsyncSeq.unfoldAsync
@@ -95,12 +95,12 @@ module Pagination =
              |> Async.AwaitTask
          )
 
-let private _getPaginated<'a> (oauthToken: string option) =
+let private _getPaginated<'a> oauthToken =
   Pagination.getPaginated
     (_createGet oauthToken)
     _deserializeAsJsonAsync<'a list>
 
-let getAllPrMergeCommitsInRange (oauthToken: string option) (parts: Parts) =
+let getAllPrMergeCommitsInRange oauthToken parts =
   match parts with
   | HasEverything (owner, repo, baseRev, headRev) ->
       let isBaseRev c = c.sha.StartsWith baseRev
@@ -133,7 +133,7 @@ type TagResp = { object: HasSha }
 /// If `rawRevisionName` does not resolve to either a SHA or a tag, we fall back
 /// to assume that `rawRevisionName` must then be a branch name, and we attempt
 /// to fetch the SHA for the head of that branch.
-let disambiguateAsync (oauthToken: string option) (owner: string) (repo: string) (rawRevisionName: string) =
+let disambiguateAsync oauthToken owner repo rawRevisionName =
   // FIXME: will probably need to get some kind of error handling in place
   // on the HTTP requests in here.
   let tryShowCommitAsync () = task {
@@ -142,7 +142,7 @@ let disambiguateAsync (oauthToken: string option) (owner: string) (repo: string)
 
     return
       objOpt
-      |> Option.map (fun { HasSha.sha = sha } -> UCommit (CommitSha sha))
+      |> Option.map (fun { HasSha.sha = sha } -> Commit (CommitSha sha))
   }
   let tryShowTagAsync () = task {
     let uri = Uri <| sprintf "https://api.github.com/repos/%s/%s/git/refs/tags/%s" owner repo rawRevisionName
@@ -150,7 +150,7 @@ let disambiguateAsync (oauthToken: string option) (owner: string) (repo: string)
 
     return
       objOpt
-      |> Option.map (fun { object = { sha = sha } } -> UTag (TagName rawRevisionName, CommitSha sha))
+      |> Option.map (fun { object = { sha = sha } } -> Tag (TagName rawRevisionName, CommitSha sha))
   }
   let tryShowBranchAsync () = task {
     let uri = Uri <| sprintf "https://api.github.com/repos/%s/%s/branches/%s" owner repo rawRevisionName
@@ -158,7 +158,7 @@ let disambiguateAsync (oauthToken: string option) (owner: string) (repo: string)
 
     return
       objOpt
-      |> Option.map (fun { commit = { sha = sha } } -> UBranch (BranchName rawRevisionName, CommitSha sha))
+      |> Option.map (fun { commit = { sha = sha } } -> Branch (BranchName rawRevisionName, CommitSha sha))
   }
 
   task {

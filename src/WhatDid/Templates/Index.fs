@@ -29,7 +29,7 @@ let index owner repository baseRev headRevOpt notesNode = [
 
 let private ``_or?`` = Option.defaultValue "?"
 
-let layout parts notesText =
+let layout (parts: RawParts) notesText =
   App.layout <|
     index
       (``_or?`` parts.owner)

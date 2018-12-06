@@ -4,24 +4,22 @@ type CommitSha = CommitSha of string
 type BranchName = BranchName of string
 type TagName = TagName of string
 
-type RevisionId =
+type Revision =
 | Commit of CommitSha
-| Branch of BranchName
-| Tag of TagName
-
-type UnambiguousRevisionId =
-| UCommit of CommitSha
-| UBranch of BranchName * CommitSha
-| UTag of TagName * CommitSha
+| Branch of BranchName * CommitSha
+| Tag of TagName * CommitSha
   with
-    member this.TEMP_GetShaString () =
-      let shorten (sha: string) = sha.Substring (0, 8)
-      match this with
-      | UCommit (CommitSha sha) -> shorten sha
-      | UBranch (_, CommitSha sha) -> shorten sha
-      | UTag (_, CommitSha sha) -> shorten sha
+    static member private _Shorten (sha: string) = sha.Substring (0, 8)
+    static member GetSha =
+      function
+      | Commit (CommitSha sha) -> sha
+      | Branch (_, CommitSha sha) -> sha
+      | Tag (_, CommitSha sha) -> sha
+    static member GetShortSha = Revision.GetSha >> Revision._Shorten
+    member this.ShortSha with get () = Revision.GetShortSha this
+    member this.FullSha with get () = Revision.GetSha this
 
-type Parts = {
+type RawParts = {
   owner: string option
   repo: string option
   baseRev: string option
@@ -29,3 +27,10 @@ type Parts = {
 }
   with
     static member Empty = { owner = None; repo = None; baseRev = None; headRev = None }
+
+type FullParts = {
+  owner: string
+  repo: string
+  baseRevision: Revision
+  headRevision: Revision
+}
