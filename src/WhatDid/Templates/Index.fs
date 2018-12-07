@@ -4,8 +4,14 @@ open Giraffe.GiraffeViewEngine
 open System
 open Types
 
-let private _fancyCompareUrl owner repository baseRev headRevOpt =
-  let headRev = headRevOpt |> Option.defaultValue "master"
+let private _fancyCompareUrl ({ FullParts.owner = owner; repo = repository } as parts) =
+  let represent =
+    function
+    | Tag (TagName name, _)
+    | Branch (BranchName name, _) -> name
+    | Commit commitSha            -> commitSha.ShortSha
+  let baseRev = represent parts.baseRevision
+  let headRev = represent parts.headRevision
 
   [
     span [_class "secondary"] [ rawText "https://github.com/"]
@@ -18,22 +24,14 @@ let private _fancyCompareUrl owner repository baseRev headRevOpt =
     span [_class "primary"] [rawText headRev]
   ]
 
-let index owner repository baseRev headRevOpt notesNode = [
+let index (parts: FullParts) notesNode = [
   pre [] [
-    yield! (_fancyCompareUrl owner repository baseRev headRevOpt)
+    yield! (_fancyCompareUrl parts)
     yield br []
     yield br []
     yield notesNode
   ]
 ]
 
-let private ``_or?`` = Option.defaultValue "?"
-
-let layout (parts: RawParts) notesText =
-  App.layout <|
-    index
-      (``_or?`` parts.owner)
-      (``_or?`` parts.repo)
-      (``_or?`` parts.baseRev)
-      parts.headRev
-      (rawText notesText)
+let layout (parts: FullParts) notesText =
+  App.layout <| index parts (rawText notesText)

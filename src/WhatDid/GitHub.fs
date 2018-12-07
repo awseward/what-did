@@ -101,23 +101,23 @@ let private _getPaginated<'a> oauthToken =
     _deserializeAsJsonAsync<'a list>
 
 let getAllPrMergeCommitsInRange oauthToken parts =
-  match parts with
-  | HasEverything (owner, repo, baseRev, headRev) ->
-      let isBaseRev c = c.sha.StartsWith baseRev
-      let isPullMerge c = c.commit.message.Contains "Merge pull request #"
+  let { FullParts.owner = owner; repo = repo } = parts
+  let baseRev = Revision.GetSha parts.baseRevision
+  let headRev = Revision.GetSha parts.headRevision
 
-      sprintf "https://api.github.com/repos/%s/%s/commits?sha=%s&page=1&per_page=%u" owner repo headRev _perPage
-      |> Uri
-      |> _getPaginated oauthToken
-      |> AsyncSeq.takeWhileInclusive (not << (List.exists isBaseRev))
-      |> AsyncSeq.map (fun commits ->
-          commits
-          |> List.takeWhile (not << isBaseRev)
-          |> List.filter isPullMerge
-      )
-      |> AsyncSeq.filter (not << List.isEmpty)
-  | _ ->
-      raise <| failMissingPieces parts
+  let isBaseRev c = c.sha.StartsWith baseRev
+  let isPullMerge c = c.commit.message.Contains "Merge pull request #"
+
+  sprintf "https://api.github.com/repos/%s/%s/commits?sha=%s&page=1&per_page=%u" owner repo headRev _perPage
+  |> Uri
+  |> _getPaginated oauthToken
+  |> AsyncSeq.takeWhileInclusive (not << (List.exists isBaseRev))
+  |> AsyncSeq.map (fun commits ->
+      commits
+      |> List.takeWhile (not << isBaseRev)
+      |> List.filter isPullMerge
+  )
+  |> AsyncSeq.filter (not << List.isEmpty)
 
 type HasSha = { sha: string }
 type BranchResp = { commit: HasSha }

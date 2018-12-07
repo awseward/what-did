@@ -40,64 +40,59 @@ module TempHandler =
 
   open GitHub.Temp
 
-  let private _disambiguateRevsAsync oauthToken parts =
-    match parts with
+  let private _disambiguatePartsAsync oauthToken (rawParts: RawParts) =
+    match rawParts with
     | HasEverything (owner, repo, baseRev, headRev) ->
         let disambiguateAsync = GitHub.disambiguateAsync oauthToken owner repo
         task {
           let! uBaseOpt = disambiguateAsync baseRev
           let! uHeadOpt = disambiguateAsync headRev
 
-          // FIXME: This isn't quite right still, since if we couldn't
-          // disambiguate one of the base or head, I'm not sure that we want to
-          // continue on.
-          return
-            parts
-            |> fun p ->
-                uBaseOpt
-                |> Option.map Revision.GetShortSha
-                |> function
-                    | Some _ as rev -> { p with baseRev = rev }
-                    | None -> p
-            |> fun p ->
-                uHeadOpt
-                |> Option.map Revision.GetShortSha
-                |> function
-                    | Some _ as rev -> { p with headRev = rev }
-                    | None -> p
+          match uBaseOpt, uHeadOpt with
+          | _, None
+          | None, _ -> return! Task.FromException<FullParts> (exn "FIXME")
+          | Some baseRev, Some headRev ->
+              return
+                { owner = owner
+                  repo = repo
+                  baseRevision = baseRev
+                  headRevision = headRev }
         }
     | _ ->
-        raise <| failMissingPieces parts
+        raise <| failMissingPieces rawParts
 
-  let private _getReleaseNotesAsync oauthToken parts =
-    async {
-      let! prs =
-        parts
-        |> GitHub.getAllPrMergeCommitsInRange oauthToken
-        |> AsyncSeq.toBlockingSeq
-        |> Seq.collect id
-        |> Seq.map (fun x ->
-            x.commit.message
-            |> _getPrNumFromCommitMessage
-            |> ReleaseNotes.GitHub.getPullRequestAsync
-                  oauthToken.Value // FIXME
-                  parts.owner.Value // FIXME
-                  parts.repo.Value // FIXME
-        )
-        |> Async.Parallel
+  let private _getReleaseNotesAsync (oauthToken: string option) (parts: FullParts) =
+    match oauthToken with
+    | None -> Task.FromException<string> (exn "FIXME")
+    | Some oauthToken ->
+        async {
+          let! prs =
+            parts
+            |> GitHub.getAllPrMergeCommitsInRange (Some oauthToken)
+            |> AsyncSeq.toBlockingSeq
+            |> Seq.collect id
+            |> Seq.map (fun x ->
+                x.commit.message
+                |> _getPrNumFromCommitMessage
+                |> ReleaseNotes.GitHub.getPullRequestAsync
+                      oauthToken
+                      parts.owner
+                      parts.repo
+            )
+            |> Async.Parallel
 
-      return
-        prs
-        |> Array.map (fun pr -> sprintf "* %s %s" pr.title pr.html_url)
-        |> Seq.sort
-        |> String.concat Environment.NewLine
-    }
-    |> Async.StartAsTask
+          return
+            prs
+            |> Array.map (fun pr -> sprintf "* %s %s" pr.title pr.html_url)
+            |> Seq.sort
+            |> String.concat Environment.NewLine
+        }
+        |> Async.StartAsTask
 
   let getHandler parts : HttpHandler = (fun next ctx ->
     task {
       let! oauthToken = _getTokenAsync ctx
-      let! parts' = _disambiguateRevsAsync oauthToken parts
+      let! parts' = _disambiguatePartsAsync oauthToken parts
       let! notes = _getReleaseNotesAsync oauthToken parts'
       let xmlNode = Index.layout parts' notes
 
