@@ -15,7 +15,7 @@ let private _fancyCompareUrl ({ FullParts.owner = owner; repo = repo } as parts)
   let headRev = represent parts.headRevision
   let href = sprintf "https://github.com/%s/%s/compare/%s...%s" owner repo baseRev headRev
 
-  a [_href href] [
+  a [_href href; _class "compare-url"] [
     span [_class "secondary"] [rawText "https://github.com/"]
     span [_class "primary"]   [rawText owner]
     span [_class "secondary"] [rawText "/"]
@@ -38,7 +38,7 @@ let private _formattedNotes (prs: ReleaseNotes.GitHub.PullRequest list) : XmlNod
 
       [
         rawText <| sprintf "* %s%s " pr.title padString
-        a [_href pr.html_url] [rawText pr.html_url]
+        a [_class "pr-url"; _href pr.html_url] [rawText pr.html_url]
         br []
       ]
   )
