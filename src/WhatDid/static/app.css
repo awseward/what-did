@@ -2,7 +2,7 @@
 
 body {
   margin: 40px auto;
-  max-width: 900px;
+  max-width: 1000px;
   line-height: 1.6;
   font-size: 18px;
   color: #333;
@@ -55,6 +55,10 @@ a:hover {
 span.secondary {
   color: #3F51B577;
   display: inline-block;
+}
+
+a:hover span.secondary {
+  color: #3F51B588;
 }
 
 span.primary {

@@ -89,12 +89,39 @@ module TempHandler =
         }
         |> Async.StartAsTask
 
+  let private _getPRsAsync oauthToken (parts: FullParts) =
+    match oauthToken with
+    | None -> Task.FromException<ReleaseNotes.GitHub.PullRequest list> (exn "FIXME")
+    | Some oauthToken ->
+        async {
+          let! prs =
+            parts
+            |> GitHub.getAllPrMergeCommitsInRange (Some oauthToken)
+            |> AsyncSeq.toBlockingSeq
+            |> Seq.collect id
+            |> Seq.map (fun x ->
+                x.commit.message
+                |> _getPrNumFromCommitMessage
+                |> ReleaseNotes.GitHub.getPullRequestAsync
+                      oauthToken
+                      parts.owner
+                      parts.repo
+            )
+            |> Async.Parallel
+
+          return
+            prs
+            |> Seq.sort
+            |> List.ofSeq
+        }
+        |> Async.StartAsTask
+
   let getHandler parts : HttpHandler = (fun next ctx ->
     task {
       let! oauthToken = _getTokenAsync ctx
       let! parts' = _disambiguatePartsAsync oauthToken parts
-      let! notes = _getReleaseNotesAsync oauthToken parts'
-      let xmlNode = Index.layout parts' notes
+      let! prs = _getPRsAsync oauthToken parts'
+      let xmlNode = Index.layout parts' prs
 
       return! (htmlView xmlNode next ctx)
     }
