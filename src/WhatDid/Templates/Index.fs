@@ -16,16 +16,15 @@ let private _fancyCompareUrl ({ FullParts.owner = owner; repo = repo } as parts)
   let href = sprintf "https://github.com/%s/%s/compare/%s...%s" owner repo baseRev headRev
 
   a [_href href] [
-    span [_class "secondary"] [ rawText "https://github.com/"]
-    span [_class "primary"] [rawText owner]
+    span [_class "secondary"] [rawText "https://github.com/"]
+    span [_class "primary"]   [rawText owner]
     span [_class "secondary"] [rawText "/"]
-    span [_class "primary"] [rawText repo]
+    span [_class "primary"]   [rawText repo]
     span [_class "secondary"] [rawText "/compare/"]
-    span [_class "primary"] [rawText baseRev]
+    span [_class "primary"]   [rawText baseRev]
     span [_class "secondary"] [rawText "..."]
-    span [_class "primary"] [rawText headRev]
+    span [_class "primary"]   [rawText headRev]
   ]
-  |> List.singleton
 
 let private _formattedNotes (prs: ReleaseNotes.GitHub.PullRequest list) : XmlNode list =
   let maxTitleLength =
@@ -46,7 +45,7 @@ let private _formattedNotes (prs: ReleaseNotes.GitHub.PullRequest list) : XmlNod
 
 let index (parts: FullParts) prs = [
   pre [] [
-    yield! _fancyCompareUrl parts
+    yield _fancyCompareUrl parts
     yield br []
     yield br []
     yield! _formattedNotes prs
