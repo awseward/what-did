@@ -2,7 +2,7 @@
 
 body {
   margin: 40px auto;
-  max-width: 900px;
+  max-width: 1000px;
   line-height: 1.6;
   font-size: 18px;
   color: #333;
@@ -28,6 +28,20 @@ body {
   font-family: Fira Code, monospace;
 }
 
+body {
+  user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -webkit-user-select: none;
+}
+
+.main-container pre {
+  user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  -webkit-user-select: text;
+}
+
 .main-container a {
   text-decoration: none;
   color: #2196f3;
@@ -40,6 +54,12 @@ a:hover {
 .main-container {
   font-size: 14px;
   margin-top: 40px;
+
+  background: #f0f0f0;
+  overflow: scroll;
+  padding: 10px 20px;
+  border: 1px solid #ccc;
+  box-shadow: inset 0 0 15px 0px #CCC
 }
 
 /* input[type=text] {
@@ -53,10 +73,18 @@ a:hover {
 } */
 
 span.secondary {
-  color: #3F51B577;
+  color: #3F51B555;
   display: inline-block;
+}
+
+a:hover span.secondary {
+  color: #3F51B599;
 }
 
 span.primary {
   display: inline-block;
+}
+
+a.pr-url:not(:hover) {
+  color: #2196f355;
 }

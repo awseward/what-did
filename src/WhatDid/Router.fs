@@ -38,30 +38,90 @@ module TempHandler =
     |> String
     |> Int32.Parse
 
-  let private _getReleaseNotes (oauthToken: string option) (parts: Parts) =
-    parts
-    |> GitHub.getAllPrMergeCommitsInRange oauthToken
-    |> AsyncSeq.toBlockingSeq
-    |> Seq.collect id
-    |> Seq.map (fun x ->
-        x.commit.message
-        |> _getPrNumFromCommitMessage
-        |> ReleaseNotes.GitHub.getPullRequestAsync
-              oauthToken.Value // FIXME
-              parts.owner.Value // FIXME
-              parts.repo.Value // FIXME
-    )
-    |> Async.Parallel
-    |> Async.RunSynchronously
-    |> Array.map (fun pr -> sprintf "%s %s" pr.title pr.html_url)
-    |> Seq.sort
-    |> String.concat Environment.NewLine
+  open GitHub.Temp
+
+  let private _disambiguatePartsAsync oauthToken (rawParts: RawParts) =
+    match rawParts with
+    | HasEverything (owner, repo, baseRev, headRev) ->
+        let disambiguateAsync = GitHub.disambiguateAsync oauthToken owner repo
+        task {
+          let! uBaseOpt = disambiguateAsync baseRev
+          let! uHeadOpt = disambiguateAsync headRev
+
+          match uBaseOpt, uHeadOpt with
+          | _, None
+          | None, _ -> return! Task.FromException<FullParts> (exn "FIXME")
+          | Some baseRev, Some headRev ->
+              return
+                { owner = owner
+                  repo = repo
+                  baseRevision = baseRev
+                  headRevision = headRev }
+        }
+    | _ ->
+        raise <| failMissingPieces rawParts
+
+  let private _getReleaseNotesAsync (oauthToken: string option) (parts: FullParts) =
+    match oauthToken with
+    | None -> Task.FromException<string> (exn "FIXME")
+    | Some oauthToken ->
+        async {
+          let! prs =
+            parts
+            |> GitHub.getAllPrMergeCommitsInRange (Some oauthToken)
+            |> AsyncSeq.toBlockingSeq
+            |> Seq.collect id
+            |> Seq.map (fun x ->
+                x.commit.message
+                |> _getPrNumFromCommitMessage
+                |> ReleaseNotes.GitHub.getPullRequestAsync
+                      oauthToken
+                      parts.owner
+                      parts.repo
+            )
+            |> Async.Parallel
+
+          return
+            prs
+            |> Array.map (fun pr -> sprintf "* %s %s" pr.title pr.html_url)
+            |> Seq.sort
+            |> String.concat Environment.NewLine
+        }
+        |> Async.StartAsTask
+
+  let private _getPRsAsync oauthToken (parts: FullParts) =
+    match oauthToken with
+    | None -> Task.FromException<ReleaseNotes.GitHub.PullRequest list> (exn "FIXME")
+    | Some oauthToken ->
+        async {
+          let! prs =
+            parts
+            |> GitHub.getAllPrMergeCommitsInRange (Some oauthToken)
+            |> AsyncSeq.toBlockingSeq
+            |> Seq.collect id
+            |> Seq.map (fun x ->
+                x.commit.message
+                |> _getPrNumFromCommitMessage
+                |> ReleaseNotes.GitHub.getPullRequestAsync
+                      oauthToken
+                      parts.owner
+                      parts.repo
+            )
+            |> Async.Parallel
+
+          return
+            prs
+            |> Seq.sort
+            |> List.ofSeq
+        }
+        |> Async.StartAsTask
 
   let getHandler parts : HttpHandler = (fun next ctx ->
     task {
       let! oauthToken = _getTokenAsync ctx
-      let notes = _getReleaseNotes oauthToken parts
-      let xmlNode = Index.layout parts notes
+      let! parts' = _disambiguatePartsAsync oauthToken parts
+      let! prs = _getPRsAsync oauthToken parts'
+      let xmlNode = Index.layout parts' prs
 
       return! (htmlView xmlNode next ctx)
     }
@@ -71,7 +131,7 @@ type RouterBuilder with
   [<CustomOperation("render")>]
   member __.Render (state, partsFn) =
     let handler =
-      Parts.Empty
+      RawParts.Empty
       |> partsFn
       |> TempHandler.getHandler
 
@@ -95,7 +155,8 @@ let rangeRouterNoHead owner repo baseRev = router {
         owner = Some owner
         repo = Some repo
         baseRev = Some baseRev
-        headRev = None }
+        // FIXME: Probably want to handle this a little differently, but this works for now.
+        headRev = Some "master" }
   )
 }
 
