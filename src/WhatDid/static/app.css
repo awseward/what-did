@@ -47,7 +47,6 @@ body {
 }
 
 .main-container a {
-  text-decoration: none;
   color: #2196f3;
 }
 
@@ -68,7 +67,7 @@ a:hover {
 
 span.secondary {
   opacity: 0.3;
-  display: inline-block;
+  display: inline;
 }
 
 a:hover span.secondary {
@@ -102,4 +101,13 @@ label {
 label.required::after {
   content: ' *';
   color: #FF851B;
+}
+
+a.invalid {
+  pointer-events: none;
+  color: #FF4136;
+}
+
+div.form-link-container {
+  margin-top: 10px;
 }

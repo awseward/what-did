@@ -4,32 +4,33 @@ open ASeward.MiscTools
 open Giraffe.GiraffeViewEngine
 open System
 open Types
+open ViewUtils.Stimulus
 
 module private Form =
   let render (parts: RawParts) =
-    let onKeyUp = attr "onkeyup" "updateCompareUrl()"
+    let stimTarget = _dataTarget << (sprintf "form.%s")
+    let stimUpdate = _dataAction "input->form#update"
     App.layout [
-      h3 [] [rawText "We'll need just a little more information..."]
-
-      form [] [
+      form [_dataController "form"] [
         div [] [
           label [_class "required"] [rawText "Owner"]
-          input [_name "owner"; _value (parts.owner |> Option.defaultValue null); onKeyUp]
+          input [stimTarget "owner"; stimUpdate; _value (parts.owner |> Option.defaultValue null)]
         ]
         div [] [
           label [_class "required"] [rawText "Repository"]
-          input [_name "repo"; _value (parts.repo |> Option.defaultValue null); onKeyUp]
+          input [stimTarget "repo"; stimUpdate; _value (parts.repo |> Option.defaultValue null)]
         ]
         div [] [
           label [_class "required"] [rawText "Base Revision"]
-          input [_name "base"; _value (parts.baseRev |> Option.defaultValue null); onKeyUp]
+          input [stimTarget "base"; stimUpdate; _value (parts.baseRev |> Option.defaultValue null)]
         ]
         div [] [
           label [] [rawText "Head Revision"]
-          input [_name "head"; _placeholder "master"; _value (parts.headRev |> Option.defaultValue null); onKeyUp]
+          input [stimTarget "head"; stimUpdate; _value (parts.headRev |> Option.defaultValue null); _placeholder "master"]
         ]
-
-        div [] [a [_href ""; _id "form-compare-link"] []]
+        div [_class "form-link-container"] [
+          a [stimTarget "link"; _href ""] []
+        ]
       ]
     ]
 
