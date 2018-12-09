@@ -10,7 +10,7 @@ let private _fancyCompareUrl ({ FullParts.owner = owner; repo = repo } as parts)
     function
     | Tag (TagName name, _)
     | Branch (BranchName name, _) -> name
-    | Commit commitSha            -> commitSha.ShortSha
+    | Commit commitSha            -> commitSha.FullSha
   let baseRev = represent parts.baseRevision
   let headRev = represent parts.headRevision
   let href = sprintf "https://github.com/%s/%s/compare/%s...%s" owner repo baseRev headRev

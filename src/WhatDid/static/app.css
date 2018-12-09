@@ -59,7 +59,7 @@ a:hover {
   overflow: scroll;
   padding: 10px 20px;
   border: 1px solid #ccc;
-  box-shadow: inset 0 0 15px 0px #CCC
+  box-shadow: inset 0 0 10px 0px #CCCCCC88
 }
 
 /* input[type=text] {
