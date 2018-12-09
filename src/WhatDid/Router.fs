@@ -127,68 +127,45 @@ module TempHandler =
     }
   )
 
-type RouterBuilder with
-  [<CustomOperation("render")>]
-  member __.Render (state, partsFn) =
-    let handler =
-      RawParts.Empty
-      |> partsFn
-      |> TempHandler.getHandler
-
-    state
-    |> fun s -> __.Get (s, "", handler)
-    |> fun s -> __.Get (s, "/", handler)
-
-let rangeRouter owner repo (baseRev, headRev) = router {
-  render (fun x ->
-    { x with
+let renderNotes owner repo baseRev headRev =
+  TempHandler.getHandler
+    { RawParts.Empty with
         owner = Some owner
         repo = Some repo
         baseRev = Some baseRev
-        headRev = Some headRev }
-  )
-}
+        headRev = headRev |> Option.orElse (Some "master") }
 
-let rangeRouterNoHead owner repo baseRev = router {
-  render (fun x ->
-    { x with
-        owner = Some owner
-        repo = Some repo
-        baseRev = Some baseRev
-        // FIXME: Probably want to handle this a little differently, but this works for now.
-        headRev = Some "master" }
-  )
-}
+let baseOnlyRange (owner, repo, baseRev) = renderNotes owner repo baseRev None
+let fullySpecifiedRange (owner, repo, baseRev, headRev) =
+  renderNotes owner repo baseRev (Some headRev)
 
-let repoRouter owner repo = router {
-  forwardf "/compare/%s...%s" (rangeRouter owner repo)
-  forwardf "/compare/%s" (rangeRouterNoHead owner repo)
+let rangeForm (owner, repo) =
+  text (sprintf "TODO: Render a form requesting revision range in repo %s/%s" owner repo)
 
-  render (fun x ->
-    { x with
-        owner = Some owner
-        repo = Some repo }
-  )
-}
+let repoForm owner =
+  text (sprintf "TODO: Render a form requesting which repo owned by %s" owner)
 
-let ownerRouter owner = router {
-  forwardf "/%s" (repoRouter owner)
-
-  render (fun x ->
-    { x with owner = Some owner }
-  )
-}
+let ownerForm =
+  text "TODO: Render a form requesting which owner to use"
 
 let browserRouter = router {
   not_found_handler (setStatusCode 404 >=> htmlView NotFound.layout)
   pipe_through browser
+
   // TODO: Only require authentication if we seem to need it. Shouldn't need to
   // auth if you're just using on a public repo.
   pipe_through ( pipeline { requires_authentication (Giraffe.Auth.challenge "GitHub") } )
   get "/signin-github-oauth" (redirectTo false "/")
 
-  forwardf "/%s" ownerRouter
-  render id
+  getf "/%s/%s/compare/%s...%s" fullySpecifiedRange
+  getf "/%s/%s/compare/%s" baseOnlyRange
+  // NOTE: This is a bit of a hack, but necessary so that funkiness can't
+  // happen by navigating to an incomplete path like this:
+  // /:owner:/:repo:/compare
+  getf "/%s/%s/%s" (fun (owner, repo, _) -> rangeForm (owner, repo))
+  getf "/%s/%s" rangeForm
+  getf "/%s" repoForm
+  get  "/" ownerForm
 }
 
 //Other scopes may use different pipelines and error handlers
