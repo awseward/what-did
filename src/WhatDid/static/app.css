@@ -66,16 +66,6 @@ a:hover {
   box-shadow: inset 0 0 10px 0px #CCCCCC88
 }
 
-/* input[type=text] {
-  border: none;
-  background: none;
-  width: 90px;
-  padding: 0px;
-  margin: 0px;
-  font-size: 14px;
-  display: inline-block;
-} */
-
 span.secondary {
   opacity: 0.3;
   display: inline-block;
@@ -85,17 +75,16 @@ a:hover span.secondary {
   opacity: 0.4;
 }
 
-span.primary {
-  display: inline-block;
-}
-
 a.pr-url:not(:hover) {
   opacity: 0.3;
 }
 
-.notes-container span:hover {
-  background: #e3e3e3;
-  padding: 5px 0px;
+.notes-container span {
+  display: block;
+}
+
+.notes-container span:hover a.pr-url {
+  opacity: unset;
 }
 
 .notes-container:hover span:not(:hover) {
