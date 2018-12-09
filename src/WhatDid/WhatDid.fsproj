@@ -7,7 +7,7 @@
     <Compile Include="OAuthStuff.fs" />
     <Compile Include="Types.fs" />
     <Compile Include="Templates/App.fs" />
-    <Compile Include="Templates/Index.fs" />
+    <Compile Include="Templates/Views.fs" />
     <Compile Include="Templates/NotFound.fs" />
     <Compile Include="Templates/InternalError.fs" />
     <Compile Include="HttpHandlers.fs" />
