@@ -35,7 +35,7 @@ body {
   -webkit-user-select: none;
 }
 
-.main-container pre {
+.main-container {
   user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
@@ -73,12 +73,12 @@ a:hover {
 } */
 
 span.secondary {
-  color: #3F51B555;
+  opacity: 0.3;
   display: inline-block;
 }
 
 a:hover span.secondary {
-  color: #3F51B599;
+  opacity: 0.4;
 }
 
 span.primary {
@@ -86,5 +86,15 @@ span.primary {
 }
 
 a.pr-url:not(:hover) {
-  color: #2196f355;
+  opacity: 0.3;
+}
+
+.notes-container span:hover {
+  background: #e3e3e3;
+  padding: 5px 0px;
+}
+
+.notes-container:hover span:not(:hover) {
+  opacity: 0.3;
+  transition: opacity 0.3s ease-out;
 }

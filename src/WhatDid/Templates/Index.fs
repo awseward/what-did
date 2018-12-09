@@ -33,10 +33,10 @@ let private _formattedNotes (prs: ReleaseNotes.GitHub.PullRequest list) : XmlNod
     |> List.max
 
   prs
-  |> List.collect (fun pr ->
+  |> List.map (fun pr ->
       let padString = String (Array.replicate (maxTitleLength - pr.title.Length) ' ')
 
-      [
+      span [] [
         rawText <| sprintf "* %s%s " pr.title padString
         a [_class "pr-url"; _href pr.html_url] [rawText pr.html_url]
         br []
@@ -48,7 +48,7 @@ let index (parts: FullParts) prs = [
     yield _fancyCompareUrl parts
     yield br []
     yield br []
-    yield! _formattedNotes prs
+    yield div [_class "notes-container"] (_formattedNotes prs)
   ]
 ]
 
