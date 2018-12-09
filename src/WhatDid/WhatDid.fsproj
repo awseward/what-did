@@ -6,6 +6,7 @@
   <ItemGroup>
     <Compile Include="OAuthStuff.fs" />
     <Compile Include="Types.fs" />
+    <Compile Include="Templates/ViewUtils.fs" />
     <Compile Include="Templates/App.fs" />
     <Compile Include="Templates/Views.fs" />
     <Compile Include="Templates/NotFound.fs" />
