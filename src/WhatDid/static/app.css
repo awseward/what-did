@@ -28,6 +28,20 @@ body {
   font-family: Fira Code, monospace;
 }
 
+body {
+  user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -webkit-user-select: none;
+}
+
+.main-container pre {
+  user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  -webkit-user-select: text;
+}
+
 .main-container a {
   text-decoration: none;
   color: #2196f3;
