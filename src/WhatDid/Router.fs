@@ -116,37 +116,37 @@ module TempHandler =
         }
         |> Async.StartAsTask
 
-  let getHandler parts : HttpHandler = (fun next ctx ->
+  let notesHandler parts : HttpHandler = (fun next ctx ->
     task {
       let! oauthToken = _getTokenAsync ctx
       let! parts' = _disambiguatePartsAsync oauthToken parts
       let! prs = _getPRsAsync oauthToken parts'
-      let xmlNode = Index.layout parts' prs
+      let xmlNode = Views.notes parts' prs
 
       return! (htmlView xmlNode next ctx)
     }
   )
 
+  let formHandler parts : HttpHandler = (fun next ctx ->
+    let xmlNode = Views.form parts
+
+    htmlView xmlNode next ctx
+  )
+
 let renderNotes owner repo baseRev headRev =
-  TempHandler.getHandler
+  TempHandler.notesHandler
     { RawParts.Empty with
         owner = Some owner
         repo = Some repo
         baseRev = Some baseRev
         headRev = headRev |> Option.orElse (Some "master") }
-
 let baseOnlyRange (owner, repo, baseRev) = renderNotes owner repo baseRev None
 let fullySpecifiedRange (owner, repo, baseRev, headRev) =
   renderNotes owner repo baseRev (Some headRev)
-
 let rangeForm (owner, repo) =
-  text (sprintf "TODO: Render a form requesting revision range in repo %s/%s" owner repo)
-
-let repoForm owner =
-  text (sprintf "TODO: Render a form requesting which repo owned by %s" owner)
-
-let ownerForm =
-  text "TODO: Render a form requesting which owner to use"
+  TempHandler.formHandler { RawParts.Empty with owner = Some owner; repo = Some repo }
+let repoForm owner = TempHandler.formHandler { RawParts.Empty with owner = Some owner }
+let ownerForm = TempHandler.formHandler RawParts.Empty
 
 let browserRouter = router {
   not_found_handler (setStatusCode 404 >=> htmlView NotFound.layout)
@@ -163,8 +163,12 @@ let browserRouter = router {
   // happen by navigating to an incomplete path like this:
   // /:owner:/:repo:/compare
   getf "/%s/%s/%s" (fun (owner, repo, _) -> rangeForm (owner, repo))
+  getf "/%s/%s/" rangeForm
   getf "/%s/%s" rangeForm
+
+  getf "/%s/" repoForm
   getf "/%s" repoForm
+
   get  "/" ownerForm
 }
 

@@ -24,6 +24,10 @@ h1 {
   font-weight: 100;
 }
 
+h3 {
+  font-weight: 400;
+}
+
 body {
   font-family: Fira Code, monospace;
 }
@@ -97,4 +101,16 @@ a.pr-url:not(:hover) {
 .notes-container:hover span:not(:hover) {
   opacity: 0.3;
   transition: opacity 0.3s ease-out;
+}
+
+label {
+  width: 100px;
+  display: inline-block;
+  margin-right: 5px;
+  font-family: Helvetica, sans-serif;
+}
+
+label.required::after {
+  content: ' *';
+  color: #FF851B;
 }
