@@ -126,12 +126,7 @@ module TempHandler =
       return! (htmlView xmlNode next ctx)
     }
   )
-
-  let formHandler parts : HttpHandler = (fun next ctx ->
-    let xmlNode = Views.form parts
-
-    htmlView xmlNode next ctx
-  )
+  let formHandler = Views.form >> htmlView
 
 let renderNotes owner repo baseRev headRev =
   TempHandler.notesHandler
