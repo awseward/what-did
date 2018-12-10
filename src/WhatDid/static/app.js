@@ -68,6 +68,14 @@ function isNullOrWhitespace(str) {
       // this._updateBrowserUrl(owner, repo, base, head);
       this._updateLinkUrl(owner, repo, base, head);
     }
+
+    tryNavigateOnEnter(event) {
+      if (event.key !== 'Enter') { return; }
+      const location = this.linkTarget.getAttribute('href');
+      if (!isNullOrWhitespace(location)) {
+        Turbolinks.visit(location);
+      }
+    }
   });
 
 })();

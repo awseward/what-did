@@ -11,7 +11,7 @@ module private Form =
     let stimTarget = _dataTarget << (sprintf "form.%s")
     let stimUpdate = _dataAction "input->form#update"
     App.layout [
-      form [_dataController "form"] [
+      form [_dataController "form"; _dataAction "keyup@window->form#tryNavigateOnEnter"] [
         div [] [
           label [_class "required"] [rawText "Owner"]
           input [stimTarget "owner"; stimUpdate; _value (parts.owner |> Option.defaultValue null)]
