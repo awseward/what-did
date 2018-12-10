@@ -137,11 +137,19 @@ section {
 
 a.invalid {
   pointer-events: none;
-  color: #FF4136;
+  text-decoration: none;
 }
 
-div.form-link-container {
+span.invalid {
+  color: #C7235B;
+}
+
+.form-link-container {
   margin-top: 10px;
+}
+
+.form-link-container a {
+  display: block;
 }
 
 .checkbox-container {
@@ -156,4 +164,8 @@ div.form-link-container {
 .checkbox-container label {
   margin-left: 10px;
   display: unset;
+}
+
+.hidden {
+  visibility: hidden;
 }

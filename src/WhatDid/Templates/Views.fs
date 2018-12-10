@@ -31,6 +31,26 @@ module private Form =
   let optionalTextField name helpText placeholder =
     textField name helpText true (Some placeholder)
 
+  let previewLink (parts: RawParts) =
+    let owner = parts.owner |> Option.defaultValue ":owner:"
+    let repo = parts.repo |> Option.defaultValue ":repo:"
+    let baseRev = parts.baseRev |> Option.defaultValue ":base:"
+    let headRev = parts.headRev |> Option.defaultValue ":head:"
+
+    a [stimTarget "link"; _href ""] [
+      span [_class "secondary"; stimTarget "linkAuthority"] [(* Will have to be filled in by JS *)]
+      span [_class "secondary"]                             [rawText "/"]
+      span [_class "primary"; stimTarget "linkOwner"]       [rawText owner]
+      span [_class "secondary"]                             [rawText "/"]
+      span [_class "primary"; stimTarget "linkRepo"]        [rawText repo]
+      span [_class "secondary"]                             [rawText "/compare/"]
+      span [_class "primary"; stimTarget "linkBase"]        [rawText baseRev]
+      span [stimTarget "linkHeadContainer"] [
+        span [_class "secondary"]                           [rawText "..."]
+        span [_class "primary"; stimTarget "linkHead"]      [rawText headRev]
+      ]
+    ]
+
   let render (parts: RawParts) =
     let stimUpdateOnInput = _dataAction "input->form#update"
     App.layout [
@@ -38,7 +58,7 @@ module private Form =
         form [stimController; _dataAction "keyup@window->form#tryNavigateOnEnter"] [
           section [] [
             div [_class "form-link-container"] [
-              a [stimTarget "link"; _href ""] []
+              previewLink parts
             ]
           ]
           section [] [

@@ -8,11 +8,27 @@ function isNullOrWhitespace(str) {
 
   app.register('form', class extends Stimulus.Controller {
     static get targets() {
-      return ['owner', 'repo', 'base', 'head', 'link', 'live'];
+      return [
+        'owner',
+        'repo',
+        'base',
+        'head',
+        'live',
+        'link',
+        'linkAuthority',
+        'linkOwner',
+        'linkRepo',
+        'linkBase',
+        'linkHeadContainer',
+        'linkHead'
+      ];
     }
 
     initialize() {
-      this.data.set('initialPath', window.location.pathname);
+      const location = window.location;
+
+      this.data.set('initialPath', location.pathname);
+      this.linkAuthorityTarget.innerText = location.origin;
     }
 
     connect() {
@@ -43,12 +59,33 @@ function isNullOrWhitespace(str) {
       }
     }
 
-    _updateLinkUrl(owner, repo, base, head) {
+    _updateLinkPart(elem, value, placeholder) {
+      if (isNullOrWhitespace(value)) {
+        elem.classList.add('invalid');
+        elem.innerText = placeholder;
+      } else {
+        elem.classList.remove('invalid');
+        elem.innerText = value;
+      }
+    }
+
+    _updateLink(owner, repo, base, head) {
+      this._updateLinkPart(this.linkOwnerTarget, owner, ':owner:');
+      this._updateLinkPart(this.linkRepoTarget, repo, ':repository:');
+      this._updateLinkPart(this.linkBaseTarget, base, ':base:');
+
+      if (isNullOrWhitespace(head)) {
+        this.linkHeadContainerTarget.classList.add('hidden');
+      } else {
+        this.linkHeadContainerTarget.classList.remove('hidden');
+        this.linkHeadTarget.innerText = head;
+      }
+
       const anchor = this.linkTarget;
+
       if (isNullOrWhitespace(owner) || isNullOrWhitespace(repo) || isNullOrWhitespace(base)) {
         anchor.classList.add('invalid');
-        anchor.setAttribute('href', '');
-        anchor.innerText = 'Missing some fields which are required to generate a release notes link.';
+        anchor.classlist.setAttribute('href', '');
       } else {
         anchor.classList.remove('invalid');
         let path = `/${owner}/${repo}/compare/${base}`
@@ -56,7 +93,6 @@ function isNullOrWhitespace(str) {
           path = `${path}...${head}`;
         }
         anchor.setAttribute('href', path);
-        anchor.innerText = window.location.origin + path;
       }
     }
 
@@ -82,7 +118,8 @@ function isNullOrWhitespace(str) {
       if (checkbox.checked) {
         this._updateBrowserUrl(owner, repo, base, head);
       }
-      this._updateLinkUrl(owner, repo, base, head);
+
+      this._updateLink(owner, repo, base, head);
     }
 
     tryNavigateOnEnter(event) {
