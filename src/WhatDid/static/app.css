@@ -111,3 +111,12 @@ a.invalid {
 div.form-link-container {
   margin-top: 10px;
 }
+
+.checkbox-container {
+  margin-top: 10px;
+}
+
+.checkbox-container label {
+  margin-left: 10px;
+  display: unset;
+}

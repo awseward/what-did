@@ -28,6 +28,10 @@ module private Form =
           label [] [rawText "Head Revision"]
           input [stimTarget "head"; stimUpdate; _value (parts.headRev |> Option.defaultValue null); _placeholder "master"]
         ]
+        div[_class "checkbox-container"] [
+          input [stimTarget "live"; _dataAction "change->form#updateLiveUrl"; _type "checkbox"]
+          label [] [rawText "Enable real-time browser URL updates"]
+        ]
         div [_class "form-link-container"] [
           a [stimTarget "link"; _href ""] []
         ]
