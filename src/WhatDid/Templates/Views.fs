@@ -84,7 +84,7 @@ module private Form =
               [stimTarget "head"; stimUpdateOnInput]
               (parts.headRev |> Option.defaultValue null)
           ]
-          section [] [
+          section [_style "display:none;"] [
             div[_class "checkbox-container"] [
               input [stimTarget "live"; _dataAction "change->form#updateLiveUrl"; _type "checkbox"]
               label [] [rawText "Update the browser URL in real time"]
