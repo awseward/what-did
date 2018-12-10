@@ -91,16 +91,48 @@ a.pr-url:not(:hover) {
   transition: opacity 0.3s ease-out;
 }
 
+input, label {
+  display: block;
+}
+
+input {
+  width: 300px;
+  padding: 2px;
+}
+
 label {
-  width: 100px;
-  display: inline-block;
-  margin-right: 5px;
   font-family: Helvetica, sans-serif;
 }
 
-label.required::after {
-  content: ' *';
-  color: #FF851B;
+.field-label {
+  font-size: 1.2em;
+}
+
+.field-container {
+  padding: 5px;
+  margin-bottom: 4px;
+  display: block;
+  width: 500px;
+}
+
+.field-container.optional label.field-label::after {
+  content: ' (Optional)';
+  font-size: 0.75em;
+  vertical-align: middle;
+  color: #888;
+}
+
+
+.field-label-hint {
+  font-weight: 100;
+  font-size: 0.8em;
+  font-style: italic;
+  color: #888;
+  padding-top: 5px;
+}
+
+section {
+  padding: 10px;
 }
 
 a.invalid {
@@ -114,6 +146,11 @@ div.form-link-container {
 
 .checkbox-container {
   margin-top: 10px;
+}
+
+.checkbox-container input {
+  display: unset;
+  width: unset;
 }
 
 .checkbox-container label {

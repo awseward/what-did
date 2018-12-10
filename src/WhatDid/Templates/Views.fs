@@ -7,33 +7,69 @@ open Types
 open ViewUtils.Stimulus
 
 module private Form =
+  let controllerName = "form"
+  let stimController = _dataController controllerName
+  let stimTarget = _dataTarget << (sprintf "%s.%s" controllerName)
+
+  let textField name helpText isOptional (placeholderOpt: string option) (inputAttrs: XmlAttribute list) value =
+    let containerClass = if isOptional then "field-container optional" else "field-container"
+
+    div [_class containerClass] [
+      label [_class "field-label"] [rawText name]
+      label [_class "field-label-hint"] [rawText helpText]
+      input [
+        yield _type "text"
+        yield! inputAttrs
+        if placeholderOpt.IsSome then yield _placeholder placeholderOpt.Value
+        yield _value value
+      ]
+    ]
+
+  let requiredTextField name helpText =
+    textField name helpText false None
+
+  let optionalTextField name helpText placeholder =
+    textField name helpText true (Some placeholder)
+
   let render (parts: RawParts) =
-    let stimTarget = _dataTarget << (sprintf "form.%s")
-    let stimUpdate = _dataAction "input->form#update"
+    let stimUpdateOnInput = _dataAction "input->form#update"
     App.layout [
-      form [_dataController "form"; _dataAction "keyup@window->form#tryNavigateOnEnter"] [
-        div [] [
-          label [_class "required"] [rawText "Owner"]
-          input [stimTarget "owner"; stimUpdate; _value (parts.owner |> Option.defaultValue null)]
-        ]
-        div [] [
-          label [_class "required"] [rawText "Repository"]
-          input [stimTarget "repo"; stimUpdate; _value (parts.repo |> Option.defaultValue null)]
-        ]
-        div [] [
-          label [_class "required"] [rawText "Base Revision"]
-          input [stimTarget "base"; stimUpdate; _value (parts.baseRev |> Option.defaultValue null)]
-        ]
-        div [] [
-          label [] [rawText "Head Revision"]
-          input [stimTarget "head"; stimUpdate; _value (parts.headRev |> Option.defaultValue null); _placeholder "master"]
-        ]
-        div[_class "checkbox-container"] [
-          input [stimTarget "live"; _dataAction "change->form#updateLiveUrl"; _type "checkbox"]
-          label [] [rawText "Enable real-time browser URL updates"]
-        ]
-        div [_class "form-link-container"] [
-          a [stimTarget "link"; _href ""] []
+      div [_class "form-container"] [
+        form [stimController; _dataAction "keyup@window->form#tryNavigateOnEnter"] [
+          section [] [
+            div [_class "form-link-container"] [
+              a [stimTarget "link"; _href ""] []
+            ]
+          ]
+          section [] [
+            requiredTextField
+              "Owner"
+              "User or organization that owns the repository"
+              [stimTarget "owner"; stimUpdateOnInput]
+              (parts.owner |> Option.defaultValue null)
+            requiredTextField
+              "Repository"
+              "Name of the repository"
+              [stimTarget "repo"; stimUpdateOnInput]
+              (parts.repo |> Option.defaultValue null)
+            requiredTextField
+              "Base Revision"
+              "SHA, tag, or branch marking the beginning of the diff"
+              [stimTarget "base"; stimUpdateOnInput]
+              (parts.baseRev |> Option.defaultValue null)
+            optionalTextField
+              "Head Revision"
+              "SHA, tag, or branch marking the end of the diff"
+              "master"
+              [stimTarget "head"; stimUpdateOnInput]
+              (parts.headRev |> Option.defaultValue null)
+          ]
+          section [] [
+            div[_class "checkbox-container"] [
+              input [stimTarget "live"; _dataAction "change->form#updateLiveUrl"; _type "checkbox"]
+              label [] [rawText "Update the browser URL in real time"]
+            ]
+          ]
         ]
       ]
     ]

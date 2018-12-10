@@ -363,6 +363,7 @@ fake.build.lock
 deploy/
 database.sqlite
 .env
+.DS_Store
 
 # End custom additions
 
