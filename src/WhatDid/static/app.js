@@ -131,4 +131,16 @@ function isNullOrWhitespace(str) {
     }
   });
 
+  app.register('notes', class extends Stimulus.Controller {
+    static get targets() {
+      return ['secretInput'];
+    }
+
+    copyToClipboard() {
+      const secretInput = this.secretInputTarget;
+      secretInput.select();
+      document.execCommand('copy');
+    }
+  });
+
 })();

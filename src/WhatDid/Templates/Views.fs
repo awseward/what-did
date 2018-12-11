@@ -95,12 +95,20 @@ module private Form =
     ]
 
 module private Notes =
-  let private _fancyCompareUrl ({ FullParts.owner = owner; repo = repo } as parts) =
-    let represent =
-      function
-      | Tag (TagName name, _)
-      | Branch (BranchName name, _) -> name
-      | Commit commitSha            -> commitSha.FullSha
+  let private _represent =
+    function
+    | Tag (TagName name, _)
+    | Branch (BranchName name, _) -> name
+    | Commit commitSha            -> commitSha.FullSha
+
+  let private _rawCompareUrl ({ FullParts.owner = owner; repo = repo } as parts) =
+    let represent = _represent
+    let baseRev = _represent parts.baseRevision
+    let headRev = _represent parts.headRevision
+    sprintf "https://github.com/%s/%s/compare/%s...%s" owner repo baseRev headRev
+
+  let private _richCompareUrl ({ FullParts.owner = owner; repo = repo } as parts) =
+    let represent = _represent
     let baseRev = represent parts.baseRevision
     let headRev = represent parts.headRevision
     let href = sprintf "https://github.com/%s/%s/compare/%s...%s" owner repo baseRev headRev
@@ -116,9 +124,25 @@ module private Notes =
       span [_class "primary"]   [rawText headRev]
     ]
 
-  let private _formattedNotes =
+  let private _rawNotes =
     function
-    | [] -> div [_class "empty-container"] [rawText "Looks like there were no PRs merged in this range..."] |> List.singleton
+    | [] -> []
+    | (prs: ReleaseNotes.GitHub.PullRequest list) ->
+        let maxTitleLength =
+          prs
+          |> List.map (fun { title = t } -> t.Length)
+          |> List.max
+
+        prs
+        |> List.map (fun pr ->
+            let padString = String (Array.replicate (maxTitleLength - pr.title.Length) ' ')
+
+            sprintf "* %s%s %s" pr.title padString pr.html_url
+        )
+
+  let private _richNotes =
+    function
+    | [] -> []
     | (prs: ReleaseNotes.GitHub.PullRequest list) ->
         let maxTitleLength =
           prs
@@ -136,13 +160,35 @@ module private Notes =
             ]
         )
 
+  let private _secretInput (parts: FullParts) prs =
+    textarea [_class "secret"; _dataTarget "notes.secretInput"] [
+      [
+        yield! [_rawCompareUrl parts]
+        yield  ""
+        yield! _rawNotes prs
+      ]
+      |> String.concat Environment.NewLine
+      |> rawText
+    ]
+
+  let private _clipboardPieces parts prs =
+    [
+      _secretInput parts prs
+      button [_class "button-clipboard"; _dataAction "notes#copyToClipboard"] [rawText "Copy to clipboard"]
+    ]
+
   let render (parts: FullParts) prs =
     App.layout [
-      pre [] [
-        yield _fancyCompareUrl parts
-        yield br []
-        yield br []
-        yield div [_class "notes-container"] (_formattedNotes prs)
+      pre [_dataController "notes"] [
+        if List.isEmpty prs then
+          yield div [_class "empty-container"] [rawText "Looks like there were no PRs merged in this range..."]
+        else
+          yield _richCompareUrl parts
+          yield br []
+          yield br []
+          yield div [_class "notes-container"] (_richNotes prs)
+
+          yield! _clipboardPieces parts prs
       ]
     ]
 

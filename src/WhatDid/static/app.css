@@ -175,8 +175,30 @@ span.invalid {
   color: #888;
   text-align: center;
   padding: 40px;
+
   user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   -webkit-user-select: none;
+}
+
+.button-clipboard {
+  display: block;
+  margin-top: 35px;
+  margin-right: 0px;
+  padding: 5px 10px;
+  float: right;
+  clear: both;
+
+  user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -webkit-user-select: none;
+  margin-bottom: 10px;
+}
+
+.secret {
+  position: absolute;
+  left: -1000000px;
+  top: -1000000px;
 }
