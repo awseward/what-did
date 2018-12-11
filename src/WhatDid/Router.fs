@@ -61,34 +61,6 @@ module TempHandler =
     | _ ->
         raise <| failMissingPieces rawParts
 
-  let private _getReleaseNotesAsync (oauthToken: string option) (parts: FullParts) =
-    match oauthToken with
-    | None -> Task.FromException<string> (exn "FIXME")
-    | Some oauthToken ->
-        async {
-          let! prs =
-            parts
-            |> GitHub.getAllPrMergeCommitsInRange (Some oauthToken)
-            |> AsyncSeq.toBlockingSeq
-            |> Seq.collect id
-            |> Seq.map (fun x ->
-                x.commit.message
-                |> _getPrNumFromCommitMessage
-                |> ReleaseNotes.GitHub.getPullRequestAsync
-                      oauthToken
-                      parts.owner
-                      parts.repo
-            )
-            |> Async.Parallel
-
-          return
-            prs
-            |> Array.map (fun pr -> sprintf "* %s %s" pr.title pr.html_url)
-            |> Seq.sort
-            |> String.concat Environment.NewLine
-        }
-        |> Async.StartAsTask
-
   let private _getPRsAsync oauthToken (parts: FullParts) =
     match oauthToken with
     | None -> Task.FromException<ReleaseNotes.GitHub.PullRequest list> (exn "FIXME")

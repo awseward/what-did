@@ -116,22 +116,25 @@ module private Notes =
       span [_class "primary"]   [rawText headRev]
     ]
 
-  let private _formattedNotes (prs: ReleaseNotes.GitHub.PullRequest list) : XmlNode list =
-    let maxTitleLength =
-      prs
-      |> List.map (fun { title = t } -> t.Length)
-      |> List.max
+  let private _formattedNotes =
+    function
+    | [] -> div [_class "empty-container"] [rawText "Looks like there were no PRs merged in this range..."] |> List.singleton
+    | (prs: ReleaseNotes.GitHub.PullRequest list) ->
+        let maxTitleLength =
+          prs
+          |> List.map (fun { title = t } -> t.Length)
+          |> List.max
 
-    prs
-    |> List.map (fun pr ->
-        let padString = String (Array.replicate (maxTitleLength - pr.title.Length) ' ')
+        prs
+        |> List.map (fun pr ->
+            let padString = String (Array.replicate (maxTitleLength - pr.title.Length) ' ')
 
-        span [] [
-          rawText <| sprintf "* %s%s " pr.title padString
-          a [_class "pr-url"; _href pr.html_url] [rawText pr.html_url]
-          br []
-        ]
-    )
+            span [] [
+              rawText <| sprintf "* %s%s " pr.title padString
+              a [_class "pr-url"; _href pr.html_url] [rawText pr.html_url]
+              br []
+            ]
+        )
 
   let render (parts: FullParts) prs =
     App.layout [

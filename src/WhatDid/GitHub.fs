@@ -106,7 +106,7 @@ let getAllPrMergeCommitsInRange oauthToken parts =
   let headRev = Revision.GetSha parts.headRevision
 
   let isBaseRev c = c.sha.StartsWith baseRev
-  let isPullMerge c = c.commit.message.Contains "Merge pull request #"
+  let isPullMerge c = c.commit.message.StartsWith "Merge pull request #"
 
   sprintf "https://api.github.com/repos/%s/%s/commits?sha=%s&page=1&per_page=%u" owner repo headRev _perPage
   |> Uri
