@@ -174,14 +174,14 @@ module private Notes =
   let private _clipboardPieces parts prs =
     [
       _secretInput parts prs
-      button [_class "button-clipboard"; _dataAction "notes#copyToClipboard"] [rawText "Copy to clipboard"]
+      button [_class "button-clipboard no-select"; _dataAction "notes#copyToClipboard"] [rawText "Copy to clipboard"]
     ]
 
   let render (parts: FullParts) prs =
     App.layout [
       pre [_dataController "notes"] [
         if List.isEmpty prs then
-          yield div [_class "empty-container"] [rawText "Looks like there were no PRs merged in this range..."]
+          yield div [_class "empty-container no-select"] [rawText "Looks like there were no PRs merged in this range..."]
         else
           yield _richCompareUrl parts
           yield br []

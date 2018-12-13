@@ -15,8 +15,8 @@ let layout (content: XmlNode list) =
             script [_defer; _src "/app.js"] []
         ]
 
-        body [] [
+        body [_class "no-select"] [
             yield h1 [] [rawText "What did we do?"]
-            yield div [_class "main-container"] content
+            yield div [_class "main-container text-select"] content
         ]
     ]

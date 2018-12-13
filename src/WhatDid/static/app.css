@@ -32,14 +32,7 @@ body {
   font-family: Fira Code, monospace;
 }
 
-body {
-  user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  -webkit-user-select: none;
-}
-
-.main-container {
+.text-select {
   user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
@@ -123,7 +116,6 @@ label {
   color: #888;
 }
 
-
 .field-label-hint {
   font-weight: 100;
   font-size: 0.8em;
@@ -175,26 +167,23 @@ span.invalid {
   color: #888;
   text-align: center;
   padding: 40px;
-
-  user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  -webkit-user-select: none;
 }
 
 .button-clipboard {
   display: block;
   margin-top: 35px;
   margin-right: 0px;
+  margin-bottom: 10px;
   padding: 5px 10px;
   float: right;
   clear: both;
+}
 
+.no-select {
   user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   -webkit-user-select: none;
-  margin-bottom: 10px;
 }
 
 .secret {
