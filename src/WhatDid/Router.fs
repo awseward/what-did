@@ -87,12 +87,18 @@ module TempHandler =
         }
         |> Async.StartAsTask
 
+  let _tempFilterAndWarn (prs: ReleaseNotes.GitHub.PullRequest list) =
+    let titleOrUrlIsNull (pr: ReleaseNotes.GitHub.PullRequest) = isNull pr.title || isNull pr.html_url
+    if List.exists titleOrUrlIsNull prs then
+      eprintfn "WARNING: Fetched at least one Pull Request with null title or html_url"
+    List.filter (not << titleOrUrlIsNull) prs
+
   let notesHandler parts : HttpHandler = (fun next ctx ->
     task {
       let! oauthToken = _getTokenAsync ctx
       let! parts' = _disambiguatePartsAsync oauthToken parts
       let! prs = _getPRsAsync oauthToken parts'
-      let xmlNode = Views.notes parts' prs
+      let xmlNode = Views.notes parts' (_tempFilterAndWarn prs)
 
       return! (htmlView xmlNode next ctx)
     }
