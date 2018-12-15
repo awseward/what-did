@@ -1,7 +1,7 @@
 module Views
 
-open ASeward.MiscTools
 open Giraffe.GiraffeViewEngine
+open GitHub.Types
 open System
 open Types
 open ViewUtils.Stimulus
@@ -127,7 +127,7 @@ module private Notes =
   let private _rawNotes =
     function
     | [] -> []
-    | (prs: ReleaseNotes.GitHub.PullRequest list) ->
+    | (prs: PullRequestResp list) ->
         let maxTitleLength =
           prs
           |> List.map (fun { title = t } -> t.Length)
@@ -143,7 +143,7 @@ module private Notes =
   let private _richNotes =
     function
     | [] -> []
-    | (prs: ReleaseNotes.GitHub.PullRequest list) ->
+    | (prs: PullRequestResp list) ->
         let maxTitleLength =
           prs
           |> List.map (fun { title = t } -> t.Length)

@@ -7,6 +7,11 @@ open GitHub.Http
 open Types
 open System
 
+let tryGetPullRequestAsync oauthToken owner repo prNumber =
+  sprintf "https://api.github.com/repos/%s/%s/pulls/%i" owner repo prNumber
+  |> Uri
+  |> tryGetAsync<PullRequestResp> oauthToken
+
 let getAllPrMergeCommitsInRange oauthToken parts =
   let { FullParts.owner = owner; repo = repo } = parts
   let baseRev = Revision.GetSha parts.baseRevision
