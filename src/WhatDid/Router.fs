@@ -45,8 +45,9 @@ module TempHandler =
     | Full (owner, repo, baseRev, headRev) ->
         let disambiguateAsync = GitHub.Client.disambiguateAsync oauthToken owner repo
         task {
-          let! uBaseOpt = disambiguateAsync baseRev
-          let! uHeadOpt = disambiguateAsync headRev
+          let tasks = (disambiguateAsync baseRev, disambiguateAsync headRev)
+          let! uBaseOpt = fst tasks
+          let! uHeadOpt = snd tasks
 
           match uBaseOpt, uHeadOpt with
           | _, None
