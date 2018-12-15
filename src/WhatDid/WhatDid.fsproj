@@ -21,8 +21,11 @@
     <Compile Include="Templates/NotFound.fs" />
     <Compile Include="Templates/InternalError.fs" />
 
+    <Compile Include="ReleaseNotes/Handlers.fs" />
+
     <Compile Include="Router.fs" />
     <Compile Include="Program.fs" />
+
     <Content Include="static/*.*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

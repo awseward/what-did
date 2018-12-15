@@ -1,18 +1,12 @@
 module Router
 
-open FSharp.Control
-open FSharp.Control.Tasks.V2.ContextInsensitive
 open Giraffe.Core
 open Giraffe.ResponseWriters
-open GitHub.Types
-open GitHub.Client
 open HttpHandlers
-open Microsoft.AspNetCore.Authentication
+open ReleaseNotes.Handlers
 open Saturn
 open System
-open System.Threading.Tasks
 open Types
-open Types.Temp
 
 let browser = pipeline {
   plug (requireHttps true)
@@ -22,89 +16,8 @@ let browser = pipeline {
   set_header "x-pipeline-type" "Browser"
 }
 
-module TempHandler =
-  let private _getTokenAsync (ctx: Microsoft.AspNetCore.Http.HttpContext) =
-    task {
-      let! t = ctx.GetTokenAsync "access_token"
-
-      if String.IsNullOrWhiteSpace t then return None
-      else return Some t
-    }
-
-  let private _getPrNumFromCommitMessage (message: string) =
-    message
-    |> Seq.skipWhile (fun ch -> ch <> '#')
-    |> Seq.skipWhile (fun ch -> ch = '#')
-    |> Seq.takeWhile (fun ch -> ch <> ' ')
-    |> Seq.toArray
-    |> String
-    |> Int32.Parse
-
-  let private _disambiguatePartsAsync oauthToken (rawParts: RawParts) =
-    match rawParts with
-    | Full (owner, repo, baseRev, headRev) ->
-        let disambiguateAsync = GitHub.Client.disambiguateAsync oauthToken owner repo
-        task {
-          let tasks = (disambiguateAsync baseRev, disambiguateAsync headRev)
-          let! uBaseOpt = fst tasks
-          let! uHeadOpt = snd tasks
-
-          match uBaseOpt, uHeadOpt with
-          | _, None
-          | None, _ -> return! Task.FromException<FullParts> (exn "FIXME")
-          | Some baseRev, Some headRev ->
-              return
-                { owner = owner
-                  repo = repo
-                  baseRevision = baseRev
-                  headRevision = headRev }
-        }
-    | _ ->
-        raise (notFullExn rawParts)
-
-  let private _getPRsAsync oauthToken (parts: FullParts) =
-    async {
-      let! prs =
-        parts
-        |> GitHub.Client.getAllPrMergeCommitsInRange oauthToken
-        |> AsyncSeq.toBlockingSeq
-        |> Seq.collect id
-        |> Seq.map (fun x ->
-            x.commit.message
-            |> _getPrNumFromCommitMessage
-            |> tryGetPullRequestAsync oauthToken parts.owner parts.repo
-        )
-        |> Seq.map Async.AwaitTask
-        |> Async.Parallel
-
-      return
-        prs
-        |> Seq.choose id
-        |> Seq.sort
-        |> List.ofSeq
-    }
-    |> Async.StartAsTask
-
-  let _tempFilterAndWarn (prs: PullRequestResp list) =
-    let titleOrUrlIsNull (pr: PullRequestResp) = isNull pr.title || isNull pr.html_url
-    if List.exists titleOrUrlIsNull prs then
-      eprintfn "WARNING: Fetched at least one Pull Request with null title or html_url"
-    List.filter (not << titleOrUrlIsNull) prs
-
-  let notesHandler parts : HttpHandler = (fun next ctx ->
-    task {
-      let! oauthToken = _getTokenAsync ctx
-      let! parts' = _disambiguatePartsAsync oauthToken parts
-      let! prs = _getPRsAsync oauthToken parts'
-      let xmlNode = Views.notes parts' (_tempFilterAndWarn prs)
-
-      return! (htmlView xmlNode next ctx)
-    }
-  )
-  let formHandler = Views.form >> htmlView
-
 let renderNotes owner repo baseRev headRev =
-  TempHandler.notesHandler
+  notesHandler
     { RawParts.Empty with
         owner = Some owner
         repo = Some repo
@@ -114,9 +27,9 @@ let baseOnlyRange (owner, repo, baseRev) = renderNotes owner repo baseRev None
 let fullySpecifiedRange (owner, repo, baseRev, headRev) =
   renderNotes owner repo baseRev (Some headRev)
 let rangeForm (owner, repo) =
-  TempHandler.formHandler { RawParts.Empty with owner = Some owner; repo = Some repo }
-let repoForm owner = TempHandler.formHandler { RawParts.Empty with owner = Some owner }
-let ownerForm = TempHandler.formHandler RawParts.Empty
+  formHandler { RawParts.Empty with owner = Some owner; repo = Some repo }
+let repoForm owner = formHandler { RawParts.Empty with owner = Some owner }
+let ownerForm = formHandler RawParts.Empty
 
 let browserRouter = router {
   not_found_handler (setStatusCode 404 >=> htmlView NotFound.layout)
