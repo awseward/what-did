@@ -43,7 +43,7 @@ type FullParts = {
 }
 
 module Temp =
-  let (|HasEverything|_|) (parts: RawParts) =
+  let (|Full|_|) (parts: RawParts) =
     match parts with
     | { owner = Some owner
         repo = Some repo
