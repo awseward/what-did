@@ -6,3 +6,4 @@ Saturn.Extensions.Authorization
 Saturn.Extensions.Turbolinks
 Newtonsoft.Json
 FSharp.Control.AsyncSeq
+StackExchange.Redis

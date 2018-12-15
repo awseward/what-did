@@ -9,6 +9,7 @@ type Config =
     port: uint16
     githubOauthClientId: string
     githubOauthClientSecret: string
+    redisUrl: string
   }
 
 let getPort () =
@@ -24,6 +25,7 @@ let getConfig () = {
   port = getPort ()
   githubOauthClientId = get "GITHUB_OAUTH_CLIENT_ID"
   githubOauthClientSecret = get "GITHUB_OAUTH_CLIENT_SECRET"
+  redisUrl = get "REDIS_URL"
 }
 
 let isProduction { env = env } = env = "production"
