@@ -41,3 +41,16 @@ type FullParts = {
   baseRevision: Revision
   headRevision: Revision
 }
+
+module Temp =
+  let (|Full|_|) (parts: RawParts) =
+    match parts with
+    | { owner = Some owner
+        repo = Some repo
+        baseRev = Some baseRev
+        headRev = Some headRev } -> Some (owner, repo, baseRev, headRev)
+    | _ -> None
+  let notFullExn (parts: RawParts) =
+    let message = sprintf "WARNING: Must have values for owner, repo, baseRev, headRev. %A" parts
+    eprintfn "%s" message
+    exn message

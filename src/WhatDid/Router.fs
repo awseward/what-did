@@ -11,6 +11,7 @@ open Saturn
 open System
 open System.Threading.Tasks
 open Types
+open Types.Temp
 
 let browser = pipeline {
   plug (requireHttps true)
@@ -38,12 +39,10 @@ module TempHandler =
     |> String
     |> Int32.Parse
 
-  open GitHub.Temp
-
   let private _disambiguatePartsAsync oauthToken (rawParts: RawParts) =
     match rawParts with
-    | HasEverything (owner, repo, baseRev, headRev) ->
-        let disambiguateAsync = GitHub.disambiguateAsync oauthToken owner repo
+    | Full (owner, repo, baseRev, headRev) ->
+        let disambiguateAsync = GitHub.Client.disambiguateAsync oauthToken owner repo
         task {
           let! uBaseOpt = disambiguateAsync baseRev
           let! uHeadOpt = disambiguateAsync headRev
@@ -59,7 +58,7 @@ module TempHandler =
                   headRevision = headRev }
         }
     | _ ->
-        raise <| failMissingPieces rawParts
+        raise (notFullExn rawParts)
 
   let private _getPRsAsync oauthToken (parts: FullParts) =
     match oauthToken with
@@ -68,7 +67,7 @@ module TempHandler =
         async {
           let! prs =
             parts
-            |> GitHub.getAllPrMergeCommitsInRange (Some oauthToken)
+            |> GitHub.Client.getAllPrMergeCommitsInRange (Some oauthToken)
             |> AsyncSeq.toBlockingSeq
             |> Seq.collect id
             |> Seq.map (fun x ->
@@ -88,12 +87,18 @@ module TempHandler =
         }
         |> Async.StartAsTask
 
+  let _tempFilterAndWarn (prs: ReleaseNotes.GitHub.PullRequest list) =
+    let titleOrUrlIsNull (pr: ReleaseNotes.GitHub.PullRequest) = isNull pr.title || isNull pr.html_url
+    if List.exists titleOrUrlIsNull prs then
+      eprintfn "WARNING: Fetched at least one Pull Request with null title or html_url"
+    List.filter (not << titleOrUrlIsNull) prs
+
   let notesHandler parts : HttpHandler = (fun next ctx ->
     task {
       let! oauthToken = _getTokenAsync ctx
       let! parts' = _disambiguatePartsAsync oauthToken parts
       let! prs = _getPRsAsync oauthToken parts'
-      let xmlNode = Views.notes parts' prs
+      let xmlNode = Views.notes parts' (_tempFilterAndWarn prs)
 
       return! (htmlView xmlNode next ctx)
     }
