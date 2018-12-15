@@ -4,8 +4,11 @@
     <TargetFramework>netcoreapp2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Envars.fs" />
     <Compile Include="OAuthStuff.fs" />
+    <Compile Include="HttpHandlers.fs" />
+
+    <Compile Include="Envars.fs" />
+    <Compile Include="Config.fs" />
     <Compile Include="Types.fs" />
 
     <Compile Include="GitHub/Types.fs" />
@@ -17,9 +20,6 @@
     <Compile Include="Templates/Views.fs" />
     <Compile Include="Templates/NotFound.fs" />
     <Compile Include="Templates/InternalError.fs" />
-
-    <Compile Include="HttpHandlers.fs" />
-    <Compile Include="Config.fs" />
 
     <Compile Include="Router.fs" />
     <Compile Include="Program.fs" />
