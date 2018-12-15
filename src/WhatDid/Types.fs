@@ -41,3 +41,15 @@ type FullParts = {
   baseRevision: Revision
   headRevision: Revision
 }
+
+module Temp =
+  let (|HasEverything|_|) (parts: RawParts) =
+    match parts with
+    | { owner = Some owner
+        repo = Some repo
+        baseRev = Some baseRev
+        headRev = Some headRev } -> Some (owner, repo, baseRev, headRev)
+    | _ -> None
+  let failMissingPieces (parts: RawParts) =
+    eprintfn "WARNING: Must have values for owner, repo, baseRev, headRev. %A" parts
+    exn "FIXME"

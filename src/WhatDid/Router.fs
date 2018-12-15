@@ -11,6 +11,7 @@ open Saturn
 open System
 open System.Threading.Tasks
 open Types
+open Types.Temp
 
 let browser = pipeline {
   plug (requireHttps true)
@@ -38,12 +39,10 @@ module TempHandler =
     |> String
     |> Int32.Parse
 
-  open GitHub.Temp
-
   let private _disambiguatePartsAsync oauthToken (rawParts: RawParts) =
     match rawParts with
     | HasEverything (owner, repo, baseRev, headRev) ->
-        let disambiguateAsync = GitHub.disambiguateAsync oauthToken owner repo
+        let disambiguateAsync = GitHub.Client.disambiguateAsync oauthToken owner repo
         task {
           let! uBaseOpt = disambiguateAsync baseRev
           let! uHeadOpt = disambiguateAsync headRev
@@ -68,7 +67,7 @@ module TempHandler =
         async {
           let! prs =
             parts
-            |> GitHub.getAllPrMergeCommitsInRange (Some oauthToken)
+            |> GitHub.Client.getAllPrMergeCommitsInRange (Some oauthToken)
             |> AsyncSeq.toBlockingSeq
             |> Seq.collect id
             |> Seq.map (fun x ->
