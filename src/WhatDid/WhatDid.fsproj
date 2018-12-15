@@ -5,21 +5,22 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="OAuthStuff.fs" />
+    <Compile Include="HttpHandlers.fs" />
+
+    <Compile Include="Envars.fs" />
+    <Compile Include="Config.fs" />
     <Compile Include="Types.fs" />
+
+    <Compile Include="GitHub/Types.fs" />
+    <Compile Include="GitHub/Http.fs" />
+    <Compile Include="GitHub/Client.fs" />
+
     <Compile Include="Templates/ViewUtils.fs" />
     <Compile Include="Templates/App.fs" />
     <Compile Include="Templates/Views.fs" />
     <Compile Include="Templates/NotFound.fs" />
     <Compile Include="Templates/InternalError.fs" />
 
-    <Compile Include="HttpHandlers.fs" />
-    <Compile Include="Envars.fs" />
-    <Compile Include="Config.fs" />
-
-    <Compile Include="GitHub/Types.fs" />
-    <Compile Include="GitHub/Http.fs" />
-
-    <Compile Include="GitHub.fs" />
     <Compile Include="Router.fs" />
     <Compile Include="Program.fs" />
     <Content Include="static/*.*">

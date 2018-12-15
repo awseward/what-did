@@ -1,5 +1,6 @@
 module Config
 
+open Envars
 open System
 
 type Config =
@@ -13,16 +14,16 @@ type Config =
 let getPort () =
   try
     "PORT"
-    |> Envars.get
+    |> get
     |> UInt16.Parse
   with
   | _ -> 8085us
 
 let getConfig () = {
-  env = "ENV" |> Envars.getOr "development"
+  env = "ENV" |> getOr "development"
   port = getPort ()
-  githubOauthClientId = Envars.get "GITHUB_OAUTH_CLIENT_ID"
-  githubOauthClientSecret = Envars.get "GITHUB_OAUTH_CLIENT_SECRET"
+  githubOauthClientId = get "GITHUB_OAUTH_CLIENT_ID"
+  githubOauthClientSecret = get "GITHUB_OAUTH_CLIENT_SECRET"
 }
 
 let isProduction { env = env } = env = "production"

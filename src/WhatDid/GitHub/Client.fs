@@ -7,6 +7,11 @@ open GitHub.Http
 open Types
 open System
 
+let tryGetPullRequestAsync oauthToken owner repo prNumber =
+  sprintf "https://api.github.com/repos/%s/%s/pulls/%i" owner repo prNumber
+  |> Uri
+  |> tryGetAsync<PullRequestResp> oauthToken
+
 let getAllPrMergeCommitsInRange oauthToken parts =
   let { FullParts.owner = owner; repo = repo } = parts
   let baseRev = Revision.GetSha parts.baseRevision
@@ -65,8 +70,13 @@ let disambiguateAsync oauthToken owner repo rawRevisionName =
   }
 
   task {
-    let! commit = tryShowCommitAsync ()
-    let! tag = tryShowTagAsync ()
+    let tasks = (tryShowCommitAsync(), tryShowTagAsync(), tryShowBranchAsync())
+    let! commit =
+      let task, _, _ = tasks
+      task
+    let! tag =
+      let _, task, _ = tasks
+      task
 
     match commit, tag with
     | Some _ as result, None               -> return result
@@ -75,5 +85,7 @@ let disambiguateAsync oauthToken owner repo rawRevisionName =
     // GET https://api.github.com/repos/:owner:/:repo:/commits/:tag_name:
     // ```
     | _               , (Some _ as result) -> return result
-    | None            , None               -> return! tryShowBranchAsync ()
+    | None            , None               ->
+        let _, _, task = tasks
+        return! task
   }

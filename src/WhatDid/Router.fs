@@ -1,10 +1,11 @@
 module Router
 
-open ASeward.MiscTools
 open FSharp.Control
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open Giraffe.Core
 open Giraffe.ResponseWriters
+open GitHub.Types
+open GitHub.Client
 open HttpHandlers
 open Microsoft.AspNetCore.Authentication
 open Saturn
@@ -44,8 +45,9 @@ module TempHandler =
     | Full (owner, repo, baseRev, headRev) ->
         let disambiguateAsync = GitHub.Client.disambiguateAsync oauthToken owner repo
         task {
-          let! uBaseOpt = disambiguateAsync baseRev
-          let! uHeadOpt = disambiguateAsync headRev
+          let tasks = (disambiguateAsync baseRev, disambiguateAsync headRev)
+          let! uBaseOpt = fst tasks
+          let! uHeadOpt = snd tasks
 
           match uBaseOpt, uHeadOpt with
           | _, None
@@ -61,34 +63,30 @@ module TempHandler =
         raise (notFullExn rawParts)
 
   let private _getPRsAsync oauthToken (parts: FullParts) =
-    match oauthToken with
-    | None -> Task.FromException<ReleaseNotes.GitHub.PullRequest list> (exn "FIXME")
-    | Some oauthToken ->
-        async {
-          let! prs =
-            parts
-            |> GitHub.Client.getAllPrMergeCommitsInRange (Some oauthToken)
-            |> AsyncSeq.toBlockingSeq
-            |> Seq.collect id
-            |> Seq.map (fun x ->
-                x.commit.message
-                |> _getPrNumFromCommitMessage
-                |> ReleaseNotes.GitHub.getPullRequestAsync
-                      oauthToken
-                      parts.owner
-                      parts.repo
-            )
-            |> Async.Parallel
+    async {
+      let! prs =
+        parts
+        |> GitHub.Client.getAllPrMergeCommitsInRange oauthToken
+        |> AsyncSeq.toBlockingSeq
+        |> Seq.collect id
+        |> Seq.map (fun x ->
+            x.commit.message
+            |> _getPrNumFromCommitMessage
+            |> tryGetPullRequestAsync oauthToken parts.owner parts.repo
+        )
+        |> Seq.map Async.AwaitTask
+        |> Async.Parallel
 
-          return
-            prs
-            |> Seq.sort
-            |> List.ofSeq
-        }
-        |> Async.StartAsTask
+      return
+        prs
+        |> Seq.choose id
+        |> Seq.sort
+        |> List.ofSeq
+    }
+    |> Async.StartAsTask
 
-  let _tempFilterAndWarn (prs: ReleaseNotes.GitHub.PullRequest list) =
-    let titleOrUrlIsNull (pr: ReleaseNotes.GitHub.PullRequest) = isNull pr.title || isNull pr.html_url
+  let _tempFilterAndWarn (prs: PullRequestResp list) =
+    let titleOrUrlIsNull (pr: PullRequestResp) = isNull pr.title || isNull pr.html_url
     if List.exists titleOrUrlIsNull prs then
       eprintfn "WARNING: Fetched at least one Pull Request with null title or html_url"
     List.filter (not << titleOrUrlIsNull) prs
