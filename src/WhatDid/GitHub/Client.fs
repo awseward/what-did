@@ -72,10 +72,10 @@ let disambiguateAsync oauthToken owner repo rawRevisionName =
   task {
     let tasks = (tryShowCommitAsync(), tryShowTagAsync(), tryShowBranchAsync())
     let! commit =
-      let (task,_,_) = tasks
+      let task, _, _ = tasks
       task
     let! tag =
-      let (_,task,_) = tasks
+      let _, task, _ = tasks
       task
 
     match commit, tag with
@@ -86,6 +86,6 @@ let disambiguateAsync oauthToken owner repo rawRevisionName =
     // ```
     | _               , (Some _ as result) -> return result
     | None            , None               ->
-        let (_,_,task) = tasks
+        let _, _, task = tasks
         return! task
   }
