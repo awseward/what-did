@@ -13,7 +13,7 @@
 
     <Compile Include="GitHub/Types.fs" />
     <Compile Include="GitHub/Http.fs" />
-    <Compile Include="GitHub.fs" />
+    <Compile Include="GitHub/Client.fs" />
 
     <Compile Include="Templates/ViewUtils.fs" />
     <Compile Include="Templates/App.fs" />
