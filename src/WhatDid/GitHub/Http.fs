@@ -10,6 +10,8 @@ open System.Net.Http.Headers
 open System.Threading.Tasks
 open System.Collections.Concurrent
 open System.Net
+open System.Collections.Concurrent
+open Envars
 
 let (|Http2xx|_|) (response: HttpResponseMessage) =
   let statusCode = int response.StatusCode
@@ -43,13 +45,43 @@ module Cache =
     uri
     |> tryGet
     |> Option.map (fun (lastModified, json) ->
-        req.Headers.IfModifiedSince <- Nullable<DateTimeOffset> lastModified
+        req.Headers.IfModifiedSince <- Nullable lastModified
         json
     )
   let tryWrite uri json (resp: HttpResponseMessage) =
     resp.Content.Headers.LastModified
     |> Option.ofNullable
     |> Option.iter (fun lastModified -> addOrUpdate uri (lastModified, json))
+
+/// Values are of the form (lastModified, nextUri, json)
+module PaginatedCache =
+  let dict = ConcurrentDictionary<Uri, DateTimeOffset * Uri option * string> ()
+  let tryGet uri =
+    let mutable value = DateTimeOffset.MinValue, None, null
+    if dict.TryGetValue (uri, &value)
+    then Some value
+    else None
+  let addOrUpdate (uri: Uri) ((lastModified', _, _) as value') =
+    dict.AddOrUpdate (
+      uri,
+      value',
+      (fun _ (lastModified, _, _ as value) ->
+        if lastModified' > lastModified then value'
+        else value
+      )
+    )
+    |> ignore
+  let tryRead uri (req: HttpRequestMessage) =
+    uri
+    |> tryGet
+    |> Option.map (fun (lastModified, nextUri, json) ->
+        req.Headers.IfModifiedSince <- Nullable lastModified
+        (nextUri, json)
+    )
+  let tryWrite uri json nextUri (resp: HttpResponseMessage) =
+    resp.Content.Headers.LastModified
+    |> Option.ofNullable
+    |> Option.iter (fun lastModified -> addOrUpdate uri (lastModified, nextUri, json))
 
 let client =
   let c = new HttpClient()
@@ -110,7 +142,7 @@ module Pagination =
   ///
   /// Link: <https://api.github.com/resource?page=2>; rel="next",
   ///       <https://api.github.com/resource?page=5>; rel="last"
-  let tryGetNextUrl (headers: HttpResponseHeaders) : Uri option =
+  let tryGetNextUri (headers: HttpResponseHeaders) : Uri option =
     headers
     |> _tryGetLink
     |> Option.bind (fun values ->
@@ -139,21 +171,22 @@ module Pagination =
             task {
               use req = reqF uri
               printfn "%s %A" req.Method.Method uri
-              let cachedJson = Cache.tryRead uri req
+              let cacheEntry = PaginatedCache.tryRead uri req
               use! response = sendAsync req
 
               match response with
               | Http2xx _ ->
                   let! json = response.Content.ReadAsStringAsync ()
                   let items = deserialize json
-                  Cache.tryWrite uri json response
-                  return Some (items, tryGetNextUrl response.Headers)
+                  let nextUri = tryGetNextUri response.Headers
+                  PaginatedCache.tryWrite uri json nextUri response
+                  return Some (items, nextUri)
 
               | Http304 status ->
                   printfn "HTTP %i (GET %A)" (int status) uri
                   return
-                    cachedJson
-                    |> Option.map (fun json -> (deserialize json, tryGetNextUrl response.Headers))
+                    cacheEntry
+                    |> Option.map (fun (nextUri, json) -> (deserialize json, nextUri))
 
               | _ ->
                   eprintfn "WARNING: getPaginated: HTTP %i (GET %A)" (int response.StatusCode) uri

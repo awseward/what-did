@@ -15,7 +15,7 @@ let getAllPrMergeCommitsInRange oauthToken parts =
   let isBaseRev (c: CommitListOuterObj) = c.sha.StartsWith baseRev
   let isPullMerge (c: CommitListOuterObj) = c.commit.message.StartsWith "Merge pull request #"
 
-  sprintf "https://api.github.com/repos/%s/%s/commits?sha=%s&page=1&per_page=%u" owner repo headRev perPage
+  sprintf "https://api.github.com/repos/%s/%s/commits?_base_=%s&_head_=sha&sha=%s&page=1&per_page=%u" owner repo baseRev headRev perPage
   |> Uri
   |> getPaginated oauthToken
   |> AsyncSeq.takeWhileInclusive (not << (List.exists isBaseRev))
