@@ -41,7 +41,7 @@ module TempHandler =
 
   let private _disambiguatePartsAsync oauthToken (rawParts: RawParts) =
     match rawParts with
-    | HasEverything (owner, repo, baseRev, headRev) ->
+    | Full (owner, repo, baseRev, headRev) ->
         let disambiguateAsync = GitHub.Client.disambiguateAsync oauthToken owner repo
         task {
           let! uBaseOpt = disambiguateAsync baseRev
