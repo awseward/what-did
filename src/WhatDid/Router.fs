@@ -58,7 +58,7 @@ module TempHandler =
                   headRevision = headRev }
         }
     | _ ->
-        raise <| failMissingPieces rawParts
+        raise (notFullExn rawParts)
 
   let private _getPRsAsync oauthToken (parts: FullParts) =
     match oauthToken with

@@ -50,6 +50,7 @@ module Temp =
         baseRev = Some baseRev
         headRev = Some headRev } -> Some (owner, repo, baseRev, headRev)
     | _ -> None
-  let failMissingPieces (parts: RawParts) =
-    eprintfn "WARNING: Must have values for owner, repo, baseRev, headRev. %A" parts
-    exn "FIXME"
+  let notFullExn (parts: RawParts) =
+    let message = sprintf "WARNING: Must have values for owner, repo, baseRev, headRev. %A" parts
+    eprintfn "%s" message
+    exn message
