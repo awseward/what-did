@@ -14,7 +14,6 @@ open System.Collections.Concurrent
 open Envars
 open StackExchange.Redis
 
-let inline (!>) (x:^a) : ^b = ((^a or ^b) : (static member op_Implicit : ^a -> ^b) x)
 
 let (|Http2xx|_|) (response: HttpResponseMessage) =
   let statusCode = int response.StatusCode
@@ -57,32 +56,51 @@ module Cache =
     |> Option.iter (fun lastModified -> addOrUpdate uri (lastModified, json))
 
 module RedisPaginatedCache =
-  let tryGet (db: IDatabase) uri =
-    let values = db.HashGetAll (!> uri.ToString())
-    let lastModified =
-      values
-      |> Array.find (fun e -> e.Name = !> "lastModified")
-      |> fun e -> e.Value.ToString()
-      |> DateTimeOffset.Parse
+  let inline (!>) (x:^a) : ^b = ((^a or ^b) : (static member op_Implicit : ^a -> ^b) x)
 
-    let nextUri =
-      values
-      |> Array.find (fun e -> e.Name = !> "nextUri")
-      |> fun e ->
-          if e.Value.HasValue
-          then Some (e.Value.ToString() |> Uri)
-          else None
+  // let tryGet (db: IDatabase) uri =
+  //   let values = db.HashGetAll (!> uri.ToString())
+  //   let lastModified =
+  //     values
+  //     |> Array.find (fun e -> e.Name = !> "lastModified")
+  //     |> fun e -> e.Value.ToString()
+  //     |> DateTimeOffset.Parse
 
-    let json =
-      values
-      |> Array.find (fun e -> e.Name = !> "json")
-      |> fun e -> e.Value.ToString()
+  //   let nextUri =
+  //     values
+  //     |> Array.find (fun e -> e.Name = !> "nextUri")
+  //     |> fun e ->
+  //         if e.Value.HasValue
+  //         then Some (e.Value.ToString() |> Uri)
+  //         else None
 
-    Some (lastModified, nextUri, json)
+  //   let json =
+  //     values
+  //     |> Array.find (fun e -> e.Name = !> "json")
+  //     |> fun e -> e.Value.ToString()
 
-  let addOrUpdate (uri: Uri) ((lastModified': DateTimeOffset, _: Uri option, _: string) as value') =
-    // TODO
-    ()
+  //   Some (lastModified, nextUri, json)
+
+  let tryGet (db: IDatabase) (uri: Uri) : (DateTimeOffset * Uri option * string) option =
+    // TODO: Fix the above impl to handle absence of values
+    None
+
+  let addOrUpdate (db: IDatabase) (uri: Uri) (lastModified': DateTimeOffset, nextUri: Uri option, json: string) =
+    let hKey: RedisKey = !> uri.ToString()
+    let nextUri' = nextUri |> Option.map (fun u -> u.ToString()) |> Option.defaultValue null
+
+    db.HashGet (hKey, !> "lastModified")
+    |> fun redisValue -> if redisValue.HasValue then Some (redisValue.ToString()) else None
+    |> Option.map DateTimeOffset.Parse
+    |> Option.defaultValue DateTimeOffset.MinValue
+    |> fun lastModified ->
+        if lastModified' > lastModified then
+          let hValue = [|
+            new HashEntry (!> "lastModified", !> lastModified'.ToString("o"))
+            new HashEntry (!> "nextUri", !> nextUri')
+            new HashEntry (!> "json", !> json)
+          |]
+          db.HashSet (hKey, hValue)
 
   let tryRead (db: IDatabase) uri (req: HttpRequestMessage) =
     uri
@@ -92,10 +110,10 @@ module RedisPaginatedCache =
         (nextUri, json)
     )
 
-  let tryWrite uri json nextUri (resp: HttpResponseMessage) =
+  let tryWrite (db: IDatabase) uri json nextUri (resp: HttpResponseMessage) =
     resp.Content.Headers.LastModified
     |> Option.ofNullable
-    |> Option.iter (fun lastModified -> addOrUpdate uri (lastModified, nextUri, json))
+    |> Option.iter (fun lastModified -> addOrUpdate db uri (lastModified, nextUri, json))
 
 /// Values are of the form (lastModified, nextUri, json)
 [<Obsolete("Prefer `RedisPaginatedCache`")>]
