@@ -112,37 +112,6 @@ module RedisPaginatedCache =
     |> Option.ofNullable
     |> Option.iter (fun lastModified -> addOrUpdate db uri (lastModified, nextUri, json))
 
-/// Values are of the form (lastModified, nextUri, json)
-[<Obsolete("Prefer `RedisPaginatedCache`")>]
-module PaginatedCache =
-  let dict = ConcurrentDictionary<Uri, DateTimeOffset * Uri option * string> ()
-  let tryGet uri =
-    let mutable value = DateTimeOffset.MinValue, None, null
-    if dict.TryGetValue (uri, &value)
-    then Some value
-    else None
-  let addOrUpdate (uri: Uri) ((lastModified', _, _) as value') =
-    dict.AddOrUpdate (
-      uri,
-      value',
-      (fun _ (lastModified, _, _ as value) ->
-        if lastModified' > lastModified then value'
-        else value
-      )
-    )
-    |> ignore
-  let tryRead uri (req: HttpRequestMessage) =
-    uri
-    |> tryGet
-    |> Option.map (fun (lastModified, nextUri, json) ->
-        req.Headers.IfModifiedSince <- Nullable lastModified
-        (nextUri, json)
-    )
-  let tryWrite uri json nextUri (resp: HttpResponseMessage) =
-    resp.Content.Headers.LastModified
-    |> Option.ofNullable
-    |> Option.iter (fun lastModified -> addOrUpdate uri (lastModified, nextUri, json))
-
 let client =
   let c = new HttpClient()
   c.DefaultRequestHeaders.Add ("User-Agent", "whatdid")
@@ -221,6 +190,19 @@ module Pagination =
         )
     )
 
+  // FIXME: Remove this additional connection here.
+  //        Only doing it right now for convenience.
+  let config = Config.getConfig ()
+  let redis =
+    let uri = Uri config.redisUrl
+    let authority = uri.Authority
+    let configStr =
+      match uri.UserInfo.Split ([|':'|]) with
+      | [|user; pass|] -> sprintf "%s,name=%s,password=%s" authority user pass
+      | _ -> authority
+    ConnectionMultiplexer.Connect configStr
+  // EMXIF
+
   let getPaginated (reqF: Uri -> HttpRequestMessage) (deserialize: string -> 'a list) initialUri =
     initialUri
     |> Some
@@ -229,9 +211,10 @@ module Pagination =
         | None -> async { return None }
         | Some (uri: Uri) ->
             task {
+              let db = redis.GetDatabase ()
               use req = reqF uri
               printfn "%s %A" req.Method.Method uri
-              let cacheEntry = PaginatedCache.tryRead uri req
+              let cacheEntry = RedisPaginatedCache.tryRead db uri req
               use! response = sendAsync req
 
               match response with
@@ -239,7 +222,7 @@ module Pagination =
                   let! json = response.Content.ReadAsStringAsync ()
                   let items = deserialize json
                   let nextUri = tryGetNextUri response.Headers
-                  PaginatedCache.tryWrite uri json nextUri response
+                  RedisPaginatedCache.tryWrite db uri json nextUri response
                   return Some (items, nextUri)
 
               | Http304 status ->
