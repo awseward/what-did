@@ -14,6 +14,8 @@ open System.Collections.Concurrent
 open Envars
 open StackExchange.Redis
 
+let inline (!>) (x:^a) : ^b = ((^a or ^b) : (static member op_Implicit : ^a -> ^b) x)
+
 let (|Http2xx|_|) (response: HttpResponseMessage) =
   let statusCode = int response.StatusCode
   if 200 <= statusCode && statusCode < 300 then Some (response.StatusCode)
@@ -56,16 +58,16 @@ module Cache =
 
 module RedisPaginatedCache =
   let tryGet (db: IDatabase) uri =
-    let values = db.HashGetAll (RedisKey.op_Implicit (uri.ToString()))
+    let values = db.HashGetAll (!> uri.ToString())
     let lastModified =
       values
-      |> Array.find (fun e -> e.Name = RedisValue.op_Implicit "lastModified")
+      |> Array.find (fun e -> e.Name = !> "lastModified")
       |> fun e -> e.Value.ToString()
       |> DateTimeOffset.Parse
 
     let nextUri =
       values
-      |> Array.find (fun e -> e.Name = RedisValue.op_Implicit "nextUri")
+      |> Array.find (fun e -> e.Name = !> "nextUri")
       |> fun e ->
           if e.Value.HasValue
           then Some (e.Value.ToString() |> Uri)
@@ -73,7 +75,7 @@ module RedisPaginatedCache =
 
     let json =
       values
-      |> Array.find (fun e -> e.Name = RedisValue.op_Implicit "json")
+      |> Array.find (fun e -> e.Name = !> "json")
       |> fun e -> e.Value.ToString()
 
     Some (lastModified, nextUri, json)
