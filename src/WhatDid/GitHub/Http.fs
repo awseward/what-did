@@ -12,6 +12,7 @@ open System.Collections.Concurrent
 open System.Net
 open System.Collections.Concurrent
 open Envars
+open StackExchange.Redis
 
 let (|Http2xx|_|) (response: HttpResponseMessage) =
   let statusCode = int response.StatusCode
@@ -53,7 +54,49 @@ module Cache =
     |> Option.ofNullable
     |> Option.iter (fun lastModified -> addOrUpdate uri (lastModified, json))
 
+module RedisPaginatedCache =
+  let tryGet (db: IDatabase) uri =
+    let values = db.HashGetAll (RedisKey.op_Implicit (uri.ToString()))
+    let lastModified =
+      values
+      |> Array.find (fun e -> e.Name = RedisValue.op_Implicit "lastModified")
+      |> fun e -> e.Value.ToString()
+      |> DateTimeOffset.Parse
+
+    let nextUri =
+      values
+      |> Array.find (fun e -> e.Name = RedisValue.op_Implicit "nextUri")
+      |> fun e ->
+          if e.Value.HasValue
+          then Some (e.Value.ToString() |> Uri)
+          else None
+
+    let json =
+      values
+      |> Array.find (fun e -> e.Name = RedisValue.op_Implicit "json")
+      |> fun e -> e.Value.ToString()
+
+    Some (lastModified, nextUri, json)
+
+  let addOrUpdate (uri: Uri) ((lastModified': DateTimeOffset, _: Uri option, _: string) as value') =
+    // TODO
+    ()
+
+  let tryRead (db: IDatabase) uri (req: HttpRequestMessage) =
+    uri
+    |> tryGet db
+    |> Option.map (fun (lastModified, nextUri, json) ->
+        req.Headers.IfModifiedSince <- Nullable lastModified
+        (nextUri, json)
+    )
+
+  let tryWrite uri json nextUri (resp: HttpResponseMessage) =
+    resp.Content.Headers.LastModified
+    |> Option.ofNullable
+    |> Option.iter (fun lastModified -> addOrUpdate uri (lastModified, nextUri, json))
+
 /// Values are of the form (lastModified, nextUri, json)
+[<Obsolete("Prefer `RedisPaginatedCache`")>]
 module PaginatedCache =
   let dict = ConcurrentDictionary<Uri, DateTimeOffset * Uri option * string> ()
   let tryGet uri =
