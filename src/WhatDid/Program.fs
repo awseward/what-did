@@ -27,13 +27,17 @@ let isProduction = (config |> Config.isProduction)
 
 let tryRedisThings : HttpHandler = (fun next ctx ->
   try
-    let db = redis.GetDatabase()
+    let db = redis.GetDatabase ()
+    let hashKey = RedisKey.op_Implicit "https://api.github.com/:org/:repo/compare/:base...:head"
+    let hashValue = [|
+      new HashEntry (RedisValue.op_Implicit "lastModified", RedisValue.op_Implicit (DateTimeOffset.UtcNow.ToString "o"))
+      new HashEntry (RedisValue.op_Implicit "nextUri", RedisValue.op_Implicit (string null))
+      new HashEntry (RedisValue.op_Implicit "json", RedisValue.op_Implicit "{\"foo\":true}")
+    |]
+    db.HashSet (hashKey, hashValue)
 
-    let key = (RedisKey.op_Implicit "foo")
-    let value = RedisValue.op_Implicit (DateTimeOffset.UtcNow.ToString("r"))
-    db.StringSet (key, value) |> ignore
-    let value' = db.StringGet key
-    printfn "!!! redisValue !!! %A" value'
+    printfn "!!! hashKey !!! %A" hashKey
+    printfn "!!! hashValue' !!! %A" (db.HashGetAll hashKey)
   with
   | e -> printfn "ERROR: %A" e
 
