@@ -25,6 +25,27 @@ let (|Http304|_|) (response: HttpResponseMessage) =
   else
     None
 
+let inline (!>) (x:^a) : ^b = ((^a or ^b) : (static member op_Implicit : ^a -> ^b) x)
+
+module RedisCache =
+  let tryGet (db: IDatabase) (uri: Uri) : (DateTimeOffset * string) option =
+    raise (exn "TODO")
+  let addOrUpdate (db: IDatabase) (uri: Uri) (value': (DateTimeOffset * string)) : unit =
+    raise (exn "TODO")
+
+  let tryRead db uri (req: HttpRequestMessage) =
+    uri
+    |> tryGet db
+    |> Option.map (fun (lastModified, json) ->
+        req.Headers.IfModifiedSince <- Nullable lastModified
+        json
+    )
+  let tryWrite db uri json (resp: HttpResponseMessage) =
+    resp.Content.Headers.LastModified
+    |> Option.ofNullable
+    |> Option.iter (fun lastModified -> addOrUpdate db uri (lastModified, json))
+
+[<Obsolete("Prefer RedisCache")>]
 module Cache =
   let dict = ConcurrentDictionary<Uri, DateTimeOffset * string> ()
   let tryGet uri =
@@ -56,7 +77,6 @@ module Cache =
     |> Option.iter (fun lastModified -> addOrUpdate uri (lastModified, json))
 
 module RedisPaginatedCache =
-  let inline (!>) (x:^a) : ^b = ((^a or ^b) : (static member op_Implicit : ^a -> ^b) x)
 
   let tryGet (db: IDatabase) uri =
     match db.HashGetAll (!> uri.ToString()) with
@@ -136,11 +156,25 @@ let deserializeAsJsonAsync<'a> (response: HttpResponseMessage) =
     return _deserialize<'a> json
   }
 
+// FIXME: Remove this additional connection here.
+//        Only doing it right now for convenience.
+let redis =
+  let config = Config.getConfig ()
+  let uri = Uri config.redisUrl
+  let authority = uri.Authority
+  let configStr =
+    match uri.UserInfo.Split ([|':'|]) with
+    | [|user; pass|] -> sprintf "%s,name=%s,password=%s" authority user pass
+    | _ -> authority
+  ConnectionMultiplexer.Connect configStr
+// EMXIF
+
 let tryGetAsync<'a> oauthToken uri =
   task {
     printfn "GET %A" uri
+    let db = redis.GetDatabase ()
     use req = createGet oauthToken uri
-    let cachedJson = Cache.tryRead uri req
+    let cachedJson = RedisCache.tryRead db uri req
     use! response = sendAsync req
 
     match response with
@@ -148,7 +182,7 @@ let tryGetAsync<'a> oauthToken uri =
         let! json = response.Content.ReadAsStringAsync ()
         let item = _deserialize<'a> json
 
-        Cache.tryWrite uri json response
+        RedisCache.tryWrite db uri json response
 
         return Some item
 
@@ -190,18 +224,6 @@ module Pagination =
         )
     )
 
-  // FIXME: Remove this additional connection here.
-  //        Only doing it right now for convenience.
-  let config = Config.getConfig ()
-  let redis =
-    let uri = Uri config.redisUrl
-    let authority = uri.Authority
-    let configStr =
-      match uri.UserInfo.Split ([|':'|]) with
-      | [|user; pass|] -> sprintf "%s,name=%s,password=%s" authority user pass
-      | _ -> authority
-    ConnectionMultiplexer.Connect configStr
-  // EMXIF
 
   let getPaginated (reqF: Uri -> HttpRequestMessage) (deserialize: string -> 'a list) initialUri =
     initialUri
