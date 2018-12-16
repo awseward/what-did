@@ -101,6 +101,7 @@ module RedisPaginatedCache =
             new HashEntry (!> "json", !> json)
           |]
           db.HashSet (hKey, hValue)
+          db.KeyExpire (hKey, Nullable (TimeSpan.FromHours(1.))) |> ignore
 
   let tryRead (db: IDatabase) uri (req: HttpRequestMessage) =
     uri
