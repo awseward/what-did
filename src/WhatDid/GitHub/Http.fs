@@ -58,32 +58,28 @@ module Cache =
 module RedisPaginatedCache =
   let inline (!>) (x:^a) : ^b = ((^a or ^b) : (static member op_Implicit : ^a -> ^b) x)
 
-  // let tryGet (db: IDatabase) uri =
-  //   let values = db.HashGetAll (!> uri.ToString())
-  //   let lastModified =
-  //     values
-  //     |> Array.find (fun e -> e.Name = !> "lastModified")
-  //     |> fun e -> e.Value.ToString()
-  //     |> DateTimeOffset.Parse
+  let tryGet (db: IDatabase) uri =
+    match db.HashGetAll (!> uri.ToString()) with
+    | [||] -> None
+    | values ->
+        let lastModified =
+          values
+          |> Array.find (fun e -> e.Name = !> "lastModified")
+          |> fun e -> e.Value.ToString()
+          |> DateTimeOffset.Parse
+        let nextUri =
+          values
+          |> Array.find (fun e -> e.Name = !> "nextUri")
+          |> fun e ->
+              if e.Value.HasValue
+              then Some (e.Value.ToString() |> Uri)
+              else None
+        let json =
+          values
+          |> Array.find (fun e -> e.Name = !> "json")
+          |> fun e -> e.Value.ToString()
 
-  //   let nextUri =
-  //     values
-  //     |> Array.find (fun e -> e.Name = !> "nextUri")
-  //     |> fun e ->
-  //         if e.Value.HasValue
-  //         then Some (e.Value.ToString() |> Uri)
-  //         else None
-
-  //   let json =
-  //     values
-  //     |> Array.find (fun e -> e.Name = !> "json")
-  //     |> fun e -> e.Value.ToString()
-
-  //   Some (lastModified, nextUri, json)
-
-  let tryGet (db: IDatabase) (uri: Uri) : (DateTimeOffset * Uri option * string) option =
-    // TODO: Fix the above impl to handle absence of values
-    None
+        Some (lastModified, nextUri, json)
 
   let addOrUpdate (db: IDatabase) (uri: Uri) (lastModified': DateTimeOffset, nextUri: Uri option, json: string) =
     let hKey: RedisKey = !> uri.ToString()
