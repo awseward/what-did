@@ -1,18 +1,17 @@
 module GitHub.Http
 
+open Envars
 open FSharp.Control
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open Newtonsoft.Json
-open Types
+open StackExchange.Redis
 open System
+open System.Collections.Concurrent
+open System.Net
 open System.Net.Http
 open System.Net.Http.Headers
 open System.Threading.Tasks
-open System.Collections.Concurrent
-open System.Net
-open System.Collections.Concurrent
-open Envars
-open StackExchange.Redis
+open Types
 
 
 let (|Http2xx|_|) (response: HttpResponseMessage) =

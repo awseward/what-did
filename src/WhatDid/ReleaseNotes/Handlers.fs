@@ -4,8 +4,8 @@ open FSharp.Control
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open Giraffe.Core
 open Giraffe.ResponseWriters
-open GitHub.Types
 open GitHub.Client
+open GitHub.Types
 open Microsoft.AspNetCore.Authentication
 open System
 open System.Threading.Tasks

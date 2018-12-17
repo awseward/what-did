@@ -2,10 +2,10 @@ module GitHub.Client
 
 open FSharp.Control
 open FSharp.Control.Tasks.V2.ContextInsensitive
-open GitHub.Types
 open GitHub.Http
-open Types
+open GitHub.Types
 open System
+open Types
 
 let tryGetPullRequestAsync oauthToken owner repo prNumber =
   sprintf "https://api.github.com/repos/%s/%s/pulls/%i" owner repo prNumber
