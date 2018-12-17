@@ -29,9 +29,35 @@ let inline (!>) (x:^a) : ^b = ((^a or ^b) : (static member op_Implicit : ^a -> ^
 
 module RedisCache =
   let tryGet (db: IDatabase) (uri: Uri) : (DateTimeOffset * string) option =
-    raise (exn "TODO")
-  let addOrUpdate (db: IDatabase) (uri: Uri) (value': (DateTimeOffset * string)) : unit =
-    raise (exn "TODO")
+    match db.HashGetAll (!> uri.ToString()) with
+    | [||] -> None
+    | values ->
+        let lastModified =
+          values
+          |> Array.find (fun e -> e.Name = !> "lastModified")
+          |> fun e -> e.Value.ToString()
+          |> DateTimeOffset.Parse
+        let json =
+          values
+          |> Array.find (fun e -> e.Name = !> "json")
+          |> fun e -> e.Value.ToString()
+
+        Some (lastModified, json)
+
+  let addOrUpdate (db: IDatabase) (uri: Uri) (lastModified': DateTimeOffset, json) : unit =
+    let hKey: RedisKey = !> uri.ToString()
+    db.HashGet (hKey, !> "lastModified")
+    |> fun redisValue -> if redisValue.HasValue then Some (redisValue.ToString()) else None
+    |> Option.map DateTimeOffset.Parse
+    |> Option.defaultValue DateTimeOffset.MinValue
+    |> fun lastModified ->
+        if lastModified' > lastModified then
+          let hValue = [|
+            new HashEntry (!> "lastModified", !> lastModified'.ToString("o"))
+            new HashEntry (!> "json", !> json)
+          |]
+          db.HashSet (hKey, hValue)
+          db.KeyExpire (hKey, Nullable (TimeSpan.FromHours(1.))) |> ignore
 
   let tryRead db uri (req: HttpRequestMessage) =
     uri
@@ -44,37 +70,6 @@ module RedisCache =
     resp.Content.Headers.LastModified
     |> Option.ofNullable
     |> Option.iter (fun lastModified -> addOrUpdate db uri (lastModified, json))
-
-[<Obsolete("Prefer RedisCache")>]
-module Cache =
-  let dict = ConcurrentDictionary<Uri, DateTimeOffset * string> ()
-  let tryGet uri =
-    let mutable value = (DateTimeOffset.MinValue, null)
-    if dict.TryGetValue (uri, &value)
-    then Some value
-    else None
-  let addOrUpdate (uri: Uri) ((lastModified', _) as value') =
-    dict.AddOrUpdate (
-      uri,
-      value',
-      (fun _ (lastModified, _ as value) ->
-        if lastModified' > lastModified then value'
-        else value
-      )
-    )
-    |> ignore
-
-  let tryRead uri (req: HttpRequestMessage) =
-    uri
-    |> tryGet
-    |> Option.map (fun (lastModified, json) ->
-        req.Headers.IfModifiedSince <- Nullable lastModified
-        json
-    )
-  let tryWrite uri json (resp: HttpResponseMessage) =
-    resp.Content.Headers.LastModified
-    |> Option.ofNullable
-    |> Option.iter (fun lastModified -> addOrUpdate uri (lastModified, json))
 
 module RedisPaginatedCache =
 
@@ -104,7 +99,6 @@ module RedisPaginatedCache =
   let addOrUpdate (db: IDatabase) (uri: Uri) (lastModified': DateTimeOffset, nextUri: Uri option, json: string) =
     let hKey: RedisKey = !> uri.ToString()
     let nextUri' = nextUri |> Option.map (fun u -> u.ToString()) |> Option.defaultValue null
-
     db.HashGet (hKey, !> "lastModified")
     |> fun redisValue -> if redisValue.HasValue then Some (redisValue.ToString()) else None
     |> Option.map DateTimeOffset.Parse
