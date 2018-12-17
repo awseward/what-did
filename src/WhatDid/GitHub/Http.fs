@@ -27,7 +27,7 @@ let (|Http304|_|) (response: HttpResponseMessage) =
 
 let inline (!>) (x:^a) : ^b = ((^a or ^b) : (static member op_Implicit : ^a -> ^b) x)
 
-module RedisCache =
+module Cache =
   let tryGet (db: IDatabase) (uri: Uri) : (DateTimeOffset * string) option =
     match db.HashGetAll (!> uri.ToString()) with
     | [||] -> None
@@ -71,7 +71,7 @@ module RedisCache =
     |> Option.ofNullable
     |> Option.iter (fun lastModified -> addOrUpdate db uri (lastModified, json))
 
-module RedisPaginatedCache =
+module PaginatedCache =
 
   let tryGet (db: IDatabase) uri =
     match db.HashGetAll (!> uri.ToString()) with
@@ -168,7 +168,7 @@ let tryGetAsync<'a> oauthToken uri =
     printfn "GET %A" uri
     let db = redis.GetDatabase ()
     use req = createGet oauthToken uri
-    let cachedJson = RedisCache.tryRead db uri req
+    let cachedJson = Cache.tryRead db uri req
     use! response = sendAsync req
 
     match response with
@@ -176,7 +176,7 @@ let tryGetAsync<'a> oauthToken uri =
         let! json = response.Content.ReadAsStringAsync ()
         let item = _deserialize<'a> json
 
-        RedisCache.tryWrite db uri json response
+        Cache.tryWrite db uri json response
 
         return Some item
 
@@ -230,7 +230,7 @@ module Pagination =
               let db = redis.GetDatabase ()
               use req = reqF uri
               printfn "%s %A" req.Method.Method uri
-              let cacheEntry = RedisPaginatedCache.tryRead db uri req
+              let cacheEntry = PaginatedCache.tryRead db uri req
               use! response = sendAsync req
 
               match response with
@@ -238,7 +238,7 @@ module Pagination =
                   let! json = response.Content.ReadAsStringAsync ()
                   let items = deserialize json
                   let nextUri = tryGetNextUri response.Headers
-                  RedisPaginatedCache.tryWrite db uri json nextUri response
+                  PaginatedCache.tryWrite db uri json nextUri response
                   return Some (items, nextUri)
 
               | Http304 status ->
