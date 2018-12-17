@@ -1,8 +1,9 @@
 ASeward.MiscTools
 dotenv.net
+FSharp.Control.AsyncSeq
 FSharp.Core
+Newtonsoft.Json
 Saturn
 Saturn.Extensions.Authorization
 Saturn.Extensions.Turbolinks
-Newtonsoft.Json
-FSharp.Control.AsyncSeq
+StackExchange.Redis

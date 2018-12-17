@@ -1,8 +1,10 @@
 module Program
 
 open dotenv.net
+open Giraffe.Core
 open OAuthStuff
 open Saturn
+open StackExchange.Redis
 open System
 
 DotEnv.Config (

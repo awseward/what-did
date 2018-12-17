@@ -9,6 +9,7 @@ nuget Giraffe 1.1
 nuget Saturn
 nuget Saturn.Extensions.Authorization
 nuget Saturn.Extensions.Turbolinks
+nuget StackExchange.Redis
 
 clitool dotnet-saturn
 

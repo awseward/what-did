@@ -1,17 +1,18 @@
 module GitHub.Http
 
+open Envars
 open FSharp.Control
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open Newtonsoft.Json
-open Types
+open StackExchange.Redis
 open System
+open System.Collections.Concurrent
+open System.Net
 open System.Net.Http
 open System.Net.Http.Headers
 open System.Threading.Tasks
-open System.Collections.Concurrent
-open System.Net
-open System.Collections.Concurrent
-open Envars
+open Types
+
 
 let (|Http2xx|_|) (response: HttpResponseMessage) =
   let statusCode = int response.StatusCode
@@ -23,65 +24,106 @@ let (|Http304|_|) (response: HttpResponseMessage) =
   else
     None
 
-module Cache =
-  let dict = ConcurrentDictionary<Uri, DateTimeOffset * string> ()
-  let tryGet uri =
-    let mutable value = (DateTimeOffset.MinValue, null)
-    if dict.TryGetValue (uri, &value)
-    then Some value
-    else None
-  let addOrUpdate (uri: Uri) ((lastModified', _) as value') =
-    dict.AddOrUpdate (
-      uri,
-      value',
-      (fun _ (lastModified, _ as value) ->
-        if lastModified' > lastModified then value'
-        else value
-      )
-    )
-    |> ignore
+let inline (!>) (x:^a) : ^b = ((^a or ^b) : (static member op_Implicit : ^a -> ^b) x)
 
-  let tryRead uri (req: HttpRequestMessage) =
+module Cache =
+  let tryGet (db: IDatabase) (uri: Uri) : (DateTimeOffset * string) option =
+    match db.HashGetAll (!> uri.ToString()) with
+    | [||] -> None
+    | values ->
+        let lastModified =
+          values
+          |> Array.find (fun e -> e.Name = !> "lastModified")
+          |> fun e -> e.Value.ToString()
+          |> DateTimeOffset.Parse
+        let json =
+          values
+          |> Array.find (fun e -> e.Name = !> "json")
+          |> fun e -> e.Value.ToString()
+
+        Some (lastModified, json)
+
+  let addOrUpdate (db: IDatabase) (uri: Uri) (lastModified': DateTimeOffset, json) : unit =
+    let hKey: RedisKey = !> uri.ToString()
+    db.HashGet (hKey, !> "lastModified")
+    |> fun redisValue -> if redisValue.HasValue then Some (redisValue.ToString()) else None
+    |> Option.map DateTimeOffset.Parse
+    |> Option.defaultValue DateTimeOffset.MinValue
+    |> fun lastModified ->
+        if lastModified' > lastModified then
+          let hValue = [|
+            new HashEntry (!> "lastModified", !> lastModified'.ToString("o"))
+            new HashEntry (!> "json", !> json)
+          |]
+          db.HashSet (hKey, hValue)
+          db.KeyExpire (hKey, Nullable (TimeSpan.FromHours(1.))) |> ignore
+
+  let tryRead db uri (req: HttpRequestMessage) =
     uri
-    |> tryGet
+    |> tryGet db
     |> Option.map (fun (lastModified, json) ->
         req.Headers.IfModifiedSince <- Nullable lastModified
         json
     )
-  let tryWrite uri json (resp: HttpResponseMessage) =
+  let tryWrite db uri json (resp: HttpResponseMessage) =
     resp.Content.Headers.LastModified
     |> Option.ofNullable
-    |> Option.iter (fun lastModified -> addOrUpdate uri (lastModified, json))
+    |> Option.iter (fun lastModified -> addOrUpdate db uri (lastModified, json))
 
-/// Values are of the form (lastModified, nextUri, json)
 module PaginatedCache =
-  let dict = ConcurrentDictionary<Uri, DateTimeOffset * Uri option * string> ()
-  let tryGet uri =
-    let mutable value = DateTimeOffset.MinValue, None, null
-    if dict.TryGetValue (uri, &value)
-    then Some value
-    else None
-  let addOrUpdate (uri: Uri) ((lastModified', _, _) as value') =
-    dict.AddOrUpdate (
-      uri,
-      value',
-      (fun _ (lastModified, _, _ as value) ->
-        if lastModified' > lastModified then value'
-        else value
-      )
-    )
-    |> ignore
-  let tryRead uri (req: HttpRequestMessage) =
+
+  let tryGet (db: IDatabase) uri =
+    match db.HashGetAll (!> uri.ToString()) with
+    | [||] -> None
+    | values ->
+        let lastModified =
+          values
+          |> Array.find (fun e -> e.Name = !> "lastModified")
+          |> fun e -> e.Value.ToString()
+          |> DateTimeOffset.Parse
+        let nextUri =
+          values
+          |> Array.find (fun e -> e.Name = !> "nextUri")
+          |> fun e ->
+              if e.Value.HasValue
+              then Some (e.Value.ToString() |> Uri)
+              else None
+        let json =
+          values
+          |> Array.find (fun e -> e.Name = !> "json")
+          |> fun e -> e.Value.ToString()
+
+        Some (lastModified, nextUri, json)
+
+  let addOrUpdate (db: IDatabase) (uri: Uri) (lastModified': DateTimeOffset, nextUri: Uri option, json: string) =
+    let hKey: RedisKey = !> uri.ToString()
+    let nextUri' = nextUri |> Option.map (fun u -> u.ToString()) |> Option.defaultValue null
+    db.HashGet (hKey, !> "lastModified")
+    |> fun redisValue -> if redisValue.HasValue then Some (redisValue.ToString()) else None
+    |> Option.map DateTimeOffset.Parse
+    |> Option.defaultValue DateTimeOffset.MinValue
+    |> fun lastModified ->
+        if lastModified' > lastModified then
+          let hValue = [|
+            new HashEntry (!> "lastModified", !> lastModified'.ToString("o"))
+            new HashEntry (!> "nextUri", !> nextUri')
+            new HashEntry (!> "json", !> json)
+          |]
+          db.HashSet (hKey, hValue)
+          db.KeyExpire (hKey, Nullable (TimeSpan.FromHours(1.))) |> ignore
+
+  let tryRead (db: IDatabase) uri (req: HttpRequestMessage) =
     uri
-    |> tryGet
+    |> tryGet db
     |> Option.map (fun (lastModified, nextUri, json) ->
         req.Headers.IfModifiedSince <- Nullable lastModified
         (nextUri, json)
     )
-  let tryWrite uri json nextUri (resp: HttpResponseMessage) =
+
+  let tryWrite (db: IDatabase) uri json nextUri (resp: HttpResponseMessage) =
     resp.Content.Headers.LastModified
     |> Option.ofNullable
-    |> Option.iter (fun lastModified -> addOrUpdate uri (lastModified, nextUri, json))
+    |> Option.iter (fun lastModified -> addOrUpdate db uri (lastModified, nextUri, json))
 
 let client =
   let c = new HttpClient()
@@ -107,11 +149,25 @@ let deserializeAsJsonAsync<'a> (response: HttpResponseMessage) =
     return _deserialize<'a> json
   }
 
+// FIXME: Remove this additional connection here.
+//        Only doing it right now for convenience.
+let redis =
+  let config = Config.getConfig ()
+  let uri = Uri config.redisUrl
+  let authority = uri.Authority
+  let configStr =
+    match uri.UserInfo.Split ([|':'|]) with
+    | [|user; pass|] -> sprintf "%s,name=%s,password=%s" authority user pass
+    | _ -> authority
+  ConnectionMultiplexer.Connect configStr
+// EMXIF
+
 let tryGetAsync<'a> oauthToken uri =
   task {
     printfn "GET %A" uri
+    let db = redis.GetDatabase ()
     use req = createGet oauthToken uri
-    let cachedJson = Cache.tryRead uri req
+    let cachedJson = Cache.tryRead db uri req
     use! response = sendAsync req
 
     match response with
@@ -119,7 +175,7 @@ let tryGetAsync<'a> oauthToken uri =
         let! json = response.Content.ReadAsStringAsync ()
         let item = _deserialize<'a> json
 
-        Cache.tryWrite uri json response
+        Cache.tryWrite db uri json response
 
         return Some item
 
@@ -161,6 +217,7 @@ module Pagination =
         )
     )
 
+
   let getPaginated (reqF: Uri -> HttpRequestMessage) (deserialize: string -> 'a list) initialUri =
     initialUri
     |> Some
@@ -169,9 +226,10 @@ module Pagination =
         | None -> async { return None }
         | Some (uri: Uri) ->
             task {
+              let db = redis.GetDatabase ()
               use req = reqF uri
               printfn "%s %A" req.Method.Method uri
-              let cacheEntry = PaginatedCache.tryRead uri req
+              let cacheEntry = PaginatedCache.tryRead db uri req
               use! response = sendAsync req
 
               match response with
@@ -179,7 +237,7 @@ module Pagination =
                   let! json = response.Content.ReadAsStringAsync ()
                   let items = deserialize json
                   let nextUri = tryGetNextUri response.Headers
-                  PaginatedCache.tryWrite uri json nextUri response
+                  PaginatedCache.tryWrite db uri json nextUri response
                   return Some (items, nextUri)
 
               | Http304 status ->
