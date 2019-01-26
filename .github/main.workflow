@@ -1,9 +1,6 @@
 workflow "hello_actions" {
   on = "push"
-  resolves = [
-    "container:push",
-    "tree deploy",
-  ]
+  resolves = ["verify-staging"]
 }
 
 action "build" {
@@ -12,16 +9,16 @@ action "build" {
   args = ["bundle:web"]
 }
 
-action "container:login" {
+action "heroku-container-login" {
   uses = "actions/heroku@master"
   secrets = ["HEROKU_API_KEY"]
 
   args = "container:login"
 }
 
-action "container:push" {
-  uses = "actions/heroku@6db8f1c22ddf6967566b26d07227c10e8e93844b"
-  needs = ["build", "container:login"]
+action "push-staging" {
+  uses = "actions/heroku@master"
+  needs = ["build", "heroku-container-login"]
   secrets = ["HEROKU_API_KEY"]
   env = {
     HEROKU_APP = "what-did-staging"
@@ -30,15 +27,8 @@ action "container:push" {
   args = ["container:push", "web", "--recursive", "--app", "$HEROKU_APP"]
 }
 
-action "tree deploy" {
-  uses = "actions/bin/sh@master"
-  needs = ["build"]
-
-  args = ["tree deploy"]
-}
-
-action "container:release" {
-  needs = ["container:push"]
+action "release-staging" {
+  needs = ["push-staging"]
   uses = "actions/heroku@master"
   secrets = ["HEROKU_API_KEY"]
   env = {
@@ -49,7 +39,7 @@ action "container:release" {
 }
 
 action "verify-staging" {
-  needs = ["container:release"]
+  needs = ["release-staging"]
   uses = "actions/heroku@master"
   secrets = ["HEROKU_API_KEY"]
   env = {
