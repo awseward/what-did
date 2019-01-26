@@ -1,6 +1,6 @@
 workflow "hello_actions" {
   on = "push"
-  resolves = ["docker://microsoft/dotnet@2.2-sdk"]
+  resolves = ["fake-maybe"]
 }
 
 action "login" {
@@ -11,4 +11,5 @@ action "login" {
 
 action "fake-maybe" {
   uses = "./action-fake/"
+  needs = ["login"]
 }
