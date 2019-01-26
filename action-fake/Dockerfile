@@ -1,4 +1,4 @@
-FROM mono:5.18
+FROM microsoft/dotnet:2.2-sdk
 
 ADD entrypoint.sh /entrypoint.sh
 
