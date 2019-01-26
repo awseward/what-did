@@ -9,7 +9,7 @@ action "master-filter" {
 }
 
 action "build" {
-  uses = "./action-fake/"
+  uses = "awseward/gh-action-fake5@master"
   needs = ["master-filter"]
 
   args = ["bundle:web"]
