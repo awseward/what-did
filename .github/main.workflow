@@ -9,7 +9,6 @@ action "login" {
   args = "container:login"
 }
 
-action "docker://microsoft/dotnet@2.2-sdk" {
-  uses = "docker://microsoft/dotnet@2.2-sdk"
-  needs = ["login"]
+action "fake-maybe" {
+  uses = "./action-fake/"
 }
