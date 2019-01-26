@@ -10,4 +10,4 @@ RUN apt update -y \
 
 ADD entrypoint.sh /entrypoint.sh
 
-ENTRYPOINT ["/entrypoint.sh", "clean"]
+ENTRYPOINT ["/entrypoint.sh", "bundle:web"]
