@@ -1,4 +1,4 @@
-workflow "hello_actions" {
+workflow "push-heroku-prod" {
   on = "push"
   resolves = ["verify-production"]
 }
@@ -17,6 +17,7 @@ action "build" {
 
 action "heroku-container-login" {
   uses = "actions/heroku@master"
+  needs = ["master-filter"]
   secrets = ["HEROKU_API_KEY"]
 
   args = "container:login"
