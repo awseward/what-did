@@ -1,6 +1,9 @@
 workflow "hello_actions" {
   on = "push"
-  resolves = ["GitHub Action for Heroku"]
+  resolves = [
+    "heroku container:push",
+    "actions/bin/sh@master",
+  ]
 }
 
 # action "login" {
@@ -9,7 +12,7 @@ workflow "hello_actions" {
 #   args = "container:login"
 # }
 
-action "fake-maybe" {
+action "build" {
   uses = "./action-fake/"
 
   # needs = ["login"]
@@ -17,16 +20,30 @@ action "fake-maybe" {
 
 action "actions/bin/sh@master" {
   uses = "actions/bin/sh@master"
-  needs = ["fake-maybe"]
   args = ["ls -lah"]
+  needs = ["build"]
+
+  # action "login" {
+  #   uses = "actions/heroku@6db8f1c22ddf6967566b26d07227c10e8e93844b"
+  #   secrets = ["HEROKU_API_KEY"]
+  #   args = "container:login"
+  # }
+
+  # needs = ["login"]
 }
 
-action "GitHub Action for Heroku" {
+action "heroku container:push" {
   uses = "actions/heroku@6db8f1c22ddf6967566b26d07227c10e8e93844b"
-  needs = ["actions/bin/sh@master"]
-  secrets = ["HEROKU_API_KEY"]
   args = "[\"container:push\", \"web\", \"--recursive\"]"
+  secrets = ["HEROKU_API_KEY"]
+  needs = ["build"]
 }# action "login" {
+#   uses = "actions/heroku@6db8f1c22ddf6967566b26d07227c10e8e93844b"
+#   secrets = ["HEROKU_API_KEY"]
+#   args = "container:login"
+# }
+# needs = ["login"]
+# action "login" {
 #   uses = "actions/heroku@6db8f1c22ddf6967566b26d07227c10e8e93844b"
 #   secrets = ["HEROKU_API_KEY"]
 #   args = "container:login"
