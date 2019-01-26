@@ -4,4 +4,4 @@ RUN dotnet tool install fake-cli -g
 
 ADD entrypoint.sh /entrypoint.sh
 
-ENTRYPOINT ["/entrypoint.sh", "uhhhhh"]
+ENTRYPOINT ["/entrypoint.sh", "heroku:web"]
