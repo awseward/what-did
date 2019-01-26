@@ -2,7 +2,7 @@ workflow "hello_actions" {
   on = "push"
   resolves = [
     "container:push",
-    "ls -lah deploy",
+    "tree deploy",
   ]
 }
 
@@ -30,11 +30,11 @@ action "container:push" {
   args = ["container:push", "web", "--recursive", "--app", "$HEROKU_APP"]
 }
 
-action "ls -lah deploy" {
+action "tree deploy" {
   uses = "actions/bin/sh@master"
   needs = ["build"]
 
-  args = ["ls -lah deploy"]
+  args = ["tree deploy"]
 }
 
 action "container:release" {
