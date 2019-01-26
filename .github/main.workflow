@@ -1,6 +1,6 @@
 workflow "hello_actions" {
   on = "push"
-  resolves = ["actions/bin/sh@master"]
+  resolves = ["GitHub Action for Heroku"]
 }
 
 # action "login" {
@@ -21,6 +21,17 @@ action "actions/bin/sh@master" {
   args = ["ls -lah"]
 }
 
+action "GitHub Action for Heroku" {
+  uses = "actions/heroku@6db8f1c22ddf6967566b26d07227c10e8e93844b"
+  needs = ["actions/bin/sh@master"]
+  secrets = ["HEROKU_API_KEY"]
+  args = "[\"container:push\", \"web\", \"--recursive\"]"
+}# action "login" {
+#   uses = "actions/heroku@6db8f1c22ddf6967566b26d07227c10e8e93844b"
+#   secrets = ["HEROKU_API_KEY"]
+#   args = "container:login"
+# }
+# needs = ["login"]
 # action "login" {
 #   uses = "actions/heroku@6db8f1c22ddf6967566b26d07227c10e8e93844b"
 #   secrets = ["HEROKU_API_KEY"]
