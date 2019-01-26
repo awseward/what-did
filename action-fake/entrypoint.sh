@@ -4,4 +4,6 @@ set -eu
 
 export PATH="$HOME/.dotnet/tools:$PATH"
 
-fake build --list
+echo $PATH
+
+# fake build --list
