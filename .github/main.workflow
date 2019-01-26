@@ -27,7 +27,7 @@ action "container:push" {
     HEROKU_APP = "what-did-staging"
   }
 
-  args = ["container:push", "web", "--recursive", "-app", "$HEROKU_APP"]
+  args = ["container:push", "web", "--recursive", "--app", "$HEROKU_APP"]
 }
 
 action "ls -lah deploy" {
