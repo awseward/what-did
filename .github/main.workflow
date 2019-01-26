@@ -27,7 +27,7 @@ action "container:push" {
     HEROKU_APP = "what-did-staging"
   }
 
-  args = ["container:push", "web", "--recursive", "-a", "$HEROKU_APP"]
+  args = ["container:push", "web", "--recursive", "-app", "$HEROKU_APP"]
 }
 
 action "ls -lah deploy" {
@@ -37,3 +37,24 @@ action "ls -lah deploy" {
   args = ["ls -lah deploy"]
 }
 
+action "container:release" {
+  needs = ["container:push"]
+  uses = "actions/heroku@master"
+  secrets = ["HEROKU_API_KEY"]
+  env = {
+    HEROKU_APP = "what-did-staging"
+  }
+
+  args = ["container:release", "web", "--app", "$HEROKU_APP"]
+}
+
+action "verify-staging" {
+  needs = ["container:release"]
+  uses = "actions/heroku@master"
+  secrets = ["HEROKU_API_KEY"]
+  env = {
+    HEROKU_APP = "what-did-staging"
+  }
+
+  args = ["apps:info", "$HEROKU_APP"]
+}
