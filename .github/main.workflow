@@ -1,23 +1,16 @@
-workflow "push-heroku-prod" {
+workflow "Push to heroku from master" {
   on = "push"
   resolves = ["verify-production"]
 }
 
-action "master-filter" {
+action "master-only" {
   uses = "actions/bin/filter@master"
   args = "branch master"
 }
 
-action "build" {
-  uses = "awseward/gh-action-fake5@master"
-  needs = ["master-filter"]
-
-  args = ["bundle:web"]
-}
-
-action "heroku-container-login" {
+action "container-login" {
   uses = "actions/heroku@master"
-  needs = ["master-filter"]
+  needs = ["master-only"]
   secrets = ["HEROKU_API_KEY"]
 
   args = "container:login"
@@ -25,7 +18,7 @@ action "heroku-container-login" {
 
 action "push-production" {
   uses = "actions/heroku@master"
-  needs = ["build", "heroku-container-login"]
+  needs = ["container-login"]
   secrets = ["HEROKU_API_KEY"]
   env = {
     HEROKU_APP = "what-did"
