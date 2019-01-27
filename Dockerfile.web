@@ -1,4 +1,12 @@
+FROM awseward/gh-action-fake5:latest as builder
+ENV PATH="/root/.dotnet/tools:${PATH}"
+RUN mkdir /build
+COPY . /build
+WORKDIR /build
+RUN dotnet restore
+RUN fake build -t bundle:web
+
 FROM microsoft/dotnet:2.1-aspnetcore-runtime-alpine
-COPY deploy /
+COPY --from=builder /build/deploy /
 WORKDIR /WhatDid
 CMD ["dotnet", "WhatDid.dll"]

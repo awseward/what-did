@@ -105,6 +105,7 @@ Target.create "Heroku:Web" (fun _ ->
   let remote = _getOrPromptAndSetRequiredEnvar "HEROKU_REMOTE"
   let heroku args = runTool "heroku" (sprintf "%s --remote=%s" args remote) "."
 
+  heroku "container:login"
   heroku "container:push web --recursive"
   heroku "container:release web"
   heroku "open"
@@ -113,6 +114,5 @@ Target.create "Heroku:Web" (fun _ ->
 "Clean"
   ==> "Build"
   ==> "Bundle:Web"
-  ==> "Heroku:Web"
 
 Target.runOrList ()
