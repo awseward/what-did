@@ -22,6 +22,7 @@ action "push-production" {
     HEROKU_APP = "what-did"
   }
   args = ["container:push", "web", "--recursive", "--app", "$HEROKU_APP"]
+  secrets = ["HEROKU_API_KEY"]
 }
 
 action "release-production" {
@@ -31,6 +32,7 @@ action "release-production" {
     HEROKU_APP = "what-did"
   }
   args = ["container:release", "web", "--app", "$HEROKU_APP"]
+  secrets = ["HEROKU_API_KEY"]
 }
 
 action "verify-production" {
@@ -40,4 +42,5 @@ action "verify-production" {
     HEROKU_APP = "what-did"
   }
   args = ["apps:info", "$HEROKU_APP"]
+  secrets = ["HEROKU_API_KEY"]
 }
