@@ -11,7 +11,7 @@ let layout (content: XmlNode list) =
             title [] [encodedText "What did we do?"]
             link [_rel "stylesheet"; _href "/app.css" ]
             script [_src "https://cdnjs.cloudflare.com/ajax/libs/turbolinks/5.1.1/turbolinks.js"] []
-            script [_src "https://unpkg.com/stimulus/dist/stimulus.umd.js"] []
+            script [_src "https://unpkg.com/stimulus@2.0.0/dist/stimulus.umd.js"] []
             script [_defer; _src "/app.js"] []
         ]
 
