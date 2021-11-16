@@ -22,7 +22,7 @@ let renderNotes owner repo baseRev headRev =
         owner = Some owner
         repo = Some repo
         baseRev = Some baseRev
-        headRev = headRev |> Option.orElse (Some "master") }
+        headRev = headRev }
 let baseOnlyRange (owner, repo, baseRev) = renderNotes owner repo baseRev None
 let fullySpecifiedRange (owner, repo, baseRev, headRev) =
   renderNotes owner repo baseRev (Some headRev)

@@ -80,7 +80,7 @@ module private Form =
             optionalTextField
               "Head Revision"
               "SHA, tag, or branch marking the end of the diff"
-              "master"
+              "default branch"
               [stimTarget "head"; stimUpdateOnInput]
               (parts.headRev |> Option.defaultValue null)
           ]
