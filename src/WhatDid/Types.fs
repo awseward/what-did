@@ -50,6 +50,13 @@ module Temp =
         baseRev = Some baseRev
         headRev = Some headRev } -> Some (owner, repo, baseRev, headRev)
     | _ -> None
+  let (|UseDefaultBranch|_|) (parts: RawParts) =
+    match parts with
+    | { owner = Some owner
+        repo = Some repo
+        baseRev = Some baseRev
+        headRev = None } -> Some (owner, repo, baseRev)
+    | _ -> None
   let notFullExn (parts: RawParts) =
     let message = sprintf "WARNING: Must have values for owner, repo, baseRev, headRev. %A" parts
     eprintfn "%s" message

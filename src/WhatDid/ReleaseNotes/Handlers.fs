@@ -20,8 +20,18 @@ let private _getTokenAsync (ctx: Microsoft.AspNetCore.Http.HttpContext) =
     else return Some t
   }
 
-let private _disambiguatePartsAsync oauthToken (rawParts: RawParts) =
+let rec private _disambiguatePartsAsync oauthToken (rawParts: RawParts) =
   match rawParts with
+  | UseDefaultBranch (owner, repo, baseRev) ->
+      task {
+        let! repoObjOpt = GitHub.Client.tryGetRepoAsync oauthToken owner repo
+
+        match repoObjOpt with
+        | None -> return! Task.FromException<FullParts> (exn "FIXME")
+        | Some repoObj ->
+            let headRev = Some repoObj.default_branch
+            return! _disambiguatePartsAsync oauthToken { rawParts with headRev = headRev }
+      }
   | Full (owner, repo, baseRev, headRev) ->
       let disambiguateAsync = GitHub.Client.disambiguateAsync oauthToken owner repo
       task {

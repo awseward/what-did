@@ -7,6 +7,11 @@ open GitHub.Types
 open System
 open Types
 
+let tryGetRepoAsync oauthToken owner repo =
+  sprintf "https://api.github.com/repos/%s/%s" owner repo
+  |> Uri
+  |> tryGetAsync<Repo> oauthToken
+
 let tryGetPullRequestAsync oauthToken owner repo prNumber =
   sprintf "https://api.github.com/repos/%s/%s/pulls/%i" owner repo prNumber
   |> Uri
