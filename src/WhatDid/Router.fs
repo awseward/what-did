@@ -16,16 +16,15 @@ let browser = pipeline {
   set_header "x-pipeline-type" "Browser"
 }
 
-let renderNotes owner repo baseRev headRev =
+let renderNotes headRev (owner, repo, baseRev) =
   notesHandler
     { RawParts.Empty with
         owner = Some owner
         repo = Some repo
         baseRev = Some baseRev
         headRev = headRev }
-let baseOnlyRange (owner, repo, baseRev) = renderNotes owner repo baseRev None
 let fullySpecifiedRange (owner, repo, baseRev, headRev) =
-  renderNotes owner repo baseRev (Some headRev)
+  renderNotes (Some headRev) (owner, repo, baseRev)
 let rangeForm (owner, repo) =
   formHandler { RawParts.Empty with owner = Some owner; repo = Some repo }
 let repoForm owner = formHandler { RawParts.Empty with owner = Some owner }
@@ -41,7 +40,7 @@ let browserRouter = router {
   get "/signin-github-oauth" (redirectTo false "/")
 
   getf "/%s/%s/compare/%s...%s" fullySpecifiedRange
-  getf "/%s/%s/compare/%s" baseOnlyRange
+  getf "/%s/%s/compare/%s" (renderNotes None)
   // NOTE: This is a bit of a hack, but necessary so that funkiness can't
   // happen by navigating to an incomplete path like this:
   // /:owner:/:repo:/compare
